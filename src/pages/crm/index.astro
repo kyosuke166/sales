@@ -249,7 +249,7 @@ import Layout from '../../layouts/Layout.astro';
                         <a href="${group.url || '#'}" target="_blank" class="text-blue-600 font-bold hover:opacity-70 no-underline" title="会社ID：${group.id}">
                             ${group.name}
                         </a>
-                        <span class="text-[11px] text-slate-400">(${group.kana})</span>
+                        <span class="text-[11px] text-slate-400 hidden md:inline">(${group.kana})</span>
                         <button class="text-slate-300 hover:text-slate-500 transition-colors ml-1" title="会社情報を編集">
                             <i class="fa-regular fa-pen-to-square text-xs"></i>
                         </button>
@@ -280,26 +280,57 @@ import Layout from '../../layouts/Layout.astro';
                             else iconHtml = '<i class="fa-solid fa-user text-transparent mr-2 w-4"></i>';
 
                             return `
-                                <tr class="contact-row cursor-pointer transition-colors ${isRetired ? 'opacity-40 bg-slate-50' : 'hover:bg-blue-50/50'}" data-idx="${contactIdx}">
-                                    <td class="p-4 w-[20%] overflow-hidden">
-                                        <div class="flex items-center font-bold text-slate-700 truncate">
-                                            ${hasError ? '<i class="fa-solid fa-circle-exclamation text-rose-500 mr-1.5 animate-pulse"></i>' : ''}
-                                            ${iconHtml}${c.last_name || ''} ${c.first_name || ''}
+                                <tr class="contact-row cursor-pointer transition-colors ${isRetired ? 'opacity-40 bg-slate-50' : 'hover:bg-blue-50/50'} flex flex-col md:table-row border-b md:border-none" data-idx="${contactIdx}">
+                                    
+                                    <td class="p-3 md:p-4 w-full md:w-[20%] overflow-hidden pb-1 md:pb-4">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div class="flex items-baseline gap-2 flex-wrap min-w-0">
+                                                <div class="flex items-center font-bold text-slate-700 truncate text-base md:text-sm">
+                                                    ${hasError ? '<i class="fa-solid fa-circle-exclamation text-rose-500 mr-1.5 animate-pulse"></i>' : ''}
+                                                    ${iconHtml}${c.last_name || ''} ${c.first_name || ''}
+                                                </div>
+                                                <div class="text-[10px] text-slate-400 md:block md:ml-6 truncate">
+                                                    ${c.last_kana || ''} ${c.first_kana || ''}
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex md:hidden items-center gap-4 text-lg">
+                                                <i class="fa-solid fa-phone ${hasTel ? 'text-blue-500' : 'text-slate-100'}"></i>
+                                                <i class="fa-brands fa-line ${hasLine ? 'text-green-500' : 'text-slate-100'}"></i>
+                                                <i class="fa-solid fa-sticky-note ${c.memo && c.memo.trim() !== '' ? 'text-amber-500' : 'text-slate-100'}" title="${(c.memo || '').replace(/"/g, '&quot;')}"></i>
+                                                <i class="fa-solid fa-address-card ${hasCard ? 'text-amber-500' : 'text-slate-100'}"></i>
+                                            </div>
                                         </div>
-                                        <div class="text-[10px] text-slate-400 ml-6 truncate">${c.last_kana || ''} ${c.first_kana || ''}</div>
+                                        
+                                        <div class="md:hidden ml-1 mt-0.5 text-[11px] text-slate-500 truncate">
+                                            ${c.division || ''} ${c.position || ''}
+                                        </div>
                                     </td>
                                     
-                                    <td class="p-4 w-[20%] overflow-hidden">
+                                    <td class="hidden md:table-cell p-4 w-[20%] overflow-hidden">
                                         <div class="truncate text-[11px] text-slate-400">${c.division || '-'}</div>
                                         <div class="text-[11px] text-slate-400 truncate">${c.position || '-'}</div>
                                     </td>
                                     
-                                    <td class="p-4 w-[35%] overflow-hidden">
-                                        <div class="${isRetired ? 'text-slate-400' : 'text-blue-600'} truncate font-medium">${c.email || ''}</div>
-                                        <div class="text-slate-400 text-[10px] truncate">${c.email_personal || ''}</div>
+                                    <td class="px-3 py-1 md:p-4 w-full md:w-[35%] overflow-hidden">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-1.5 min-w-0">
+                                                ${window.innerWidth < 768 ? '<i class="fa-regular fa-envelope text-slate-400 text-[10px] flex-shrink-0"></i>' : ''}
+                                                <div class="${isRetired ? 'text-slate-400' : 'text-blue-600'} truncate font-medium text-xs md:text-sm">
+                                                    ${c.email || ''}
+                                                </div>
+                                            </div>
+
+                                            <div class="flex md:hidden gap-1.5 items-center flex-shrink-0">
+                                                <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_project) === 1 ? 'bg-blue-500' : 'bg-slate-200'}"></div>
+                                                <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_engineer) === 1 ? 'bg-red-300' : 'bg-slate-200'}"></div>
+                                                <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_event) === 1 ? 'bg-emerald-500' : 'bg-slate-200'}"></div>
+                                            </div>
+                                        </div>
+                                        ${c.email_personal ? `<div class="text-slate-400 text-[10px] truncate md:ml-0 ${window.innerWidth < 768 ? 'ml-5' : ''}">${c.email_personal}</div>` : ''}
                                     </td>
                                     
-                                    <td class="p-4 w-[10%] text-center">
+                                    <td class="hidden md:table-cell p-4 w-[10%] text-center">
                                         <div class="flex justify-center gap-1.5">
                                             <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_project) === 1 ? 'bg-blue-500' : 'bg-slate-200'}" title="案件配信"></div>
                                             <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_engineer) === 1 ? 'bg-red-300' : 'bg-slate-200'}" title="技術者配信"></div>
@@ -307,10 +338,10 @@ import Layout from '../../layouts/Layout.astro';
                                         </div>
                                     </td>
                                     
-                                    <td class="p-4 w-[15%] text-right">
+                                    <td class="hidden md:table-cell p-4 w-[15%] text-right">
                                         <div class="flex justify-end items-center gap-4 pr-2 text-base">
-                                            <i class="fa-solid fa-phone ${hasTel ? 'text-blue-500' : 'text-slate-100'}" title="${c.tel || ''}"></i>
-                                            <i class="fa-brands fa-line ${hasLine ? 'text-green-500' : 'text-slate-100'}" title="${c.line || ''}"></i>
+                                            <i class="fa-solid fa-phone ${hasTel ? 'text-blue-500' : 'text-slate-100'}"></i>
+                                            <i class="fa-brands fa-line ${hasLine ? 'text-green-500' : 'text-slate-100'}"></i>
                                             <i class="fa-solid fa-sticky-note ${c.memo && c.memo.trim() !== '' ? 'text-amber-500' : 'text-slate-100'}" title="${(c.memo || '').replace(/"/g, '&quot;')}"></i>
                                             <i class="fa-solid fa-address-card ${hasCard ? 'text-amber-500' : 'text-slate-100'}" title="名刺あり"></i>
                                         </div>
