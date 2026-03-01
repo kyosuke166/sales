@@ -1,0 +1,42 @@
+name: Deploy to Sakuracloud
+
+on:
+  push:
+    branches:
+      - main  # mainブランチにPushされた時に実行
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. GitHubから最新のコードを取得
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Node.js環境をセットアップ
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. 依存ライブラリをインストール
+      - name: Install dependencies
+        run: npm install
+
+      # 4. Astroをビルド（distフォルダが生成される）
+      - name: Build Astro
+        run: npm run build
+
+      # 5. さくらサーバーへSFTP転送
+      - name: SFTP Deploy
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 22
+          source: "dist/*"
+          target: "www/sales/"
+          strip_components: 1 # distフォルダ自体ではなく中身だけを送る設定

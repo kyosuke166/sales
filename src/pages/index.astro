@@ -1,0 +1,174 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const menus = [
+    { 
+        title: "会社・担当者管理", 
+        desc: "1.2万件の顧客・パートナーDB。高速検索と属性管理。", 
+        icon: "fa-address-book", 
+        href: "/crm", 
+        color: "bg-blue-600", 
+        active: true 
+    },
+    { 
+        title: "Google連絡先連携", 
+        desc: "共有アドレス帳との同期。スマホへの自動反映。", 
+        icon: "fa-brands fa-google", 
+        href: "#", 
+        color: "bg-emerald-600", 
+        active: false, 
+        status: "READY" 
+    },
+    { 
+        title: "交流会・イベント管理", 
+        desc: "各種交流会の参加者一覧。要取込み情報の抽出。", 
+        icon: "fa-people-group", 
+        href: "#", 
+        color: "bg-amber-500", 
+        active: false, 
+        status: "TODO" 
+    },
+    { 
+        title: "注文書・請求書", 
+        desc: "PDF発行・送付履歴。電子帳簿保存法に対応した管理。", 
+        icon: "fa-file-invoice-dollar", 
+        href: "#", 
+        color: "bg-slate-400", 
+        active: false, 
+        status: "DEVELOP" 
+    },
+    { 
+        title: "TODO・覚書", 
+        desc: "社内タスク・商談進捗。カレンダー連携と期限通知。", 
+        icon: "fa-list-check", 
+        href: "#", 
+        color: "bg-slate-400", 
+        active: false, 
+        status: "PLAN" 
+    },
+    { 
+        title: "勤務表・出張手当", 
+        desc: "月次の勤務報告と経費精算、承認フローの管理。", 
+        icon: "fa-calendar-check", 
+        href: "#", 
+        color: "bg-slate-400", 
+        active: false, 
+        status: "TODO" 
+    },
+    { 
+        title: "銀行取引情報", 
+        desc: "入出金明細の自動取得連携。消込作業の自動化。", 
+        icon: "fa-building-columns", 
+        href: "#", 
+        color: "bg-slate-400", 
+        active: false, 
+        status: "PLAN" 
+    },
+    { 
+        title: "購買・契約管理", 
+        desc: "備品・サブスク契約の一元管理。更新時期の通知。", 
+        icon: "fa-cart-shopping", 
+        href: "#", 
+        color: "bg-slate-400", 
+        active: false, 
+        status: "PLAN" 
+    },
+    { 
+        title: "漏洩情報の管理", 
+        desc: "漏洩されてきた情報の一覧。要取込み情報の抽出。", 
+        icon: "fa-gears", 
+        href: "#", 
+        color: "bg-slate-500", 
+        active: false, 
+        status: "LEEK" 
+    },
+];
+---
+
+<Layout title="SBT 事務管理ダッシュボード">
+    <header class="bg-white border-b sticky top-0 z-50">
+        <div class="max-w-[1400px] mx-auto px-4 h-14 flex items-center justify-between text-slate-600">
+            <div class="flex items-center gap-3">
+                <a href="/" class="hover:opacity-80 transition-opacity flex items-center gap-3">
+                    <img src="/apple-touch-icon.png" alt="Logo" class="w-8 h-8 rounded-lg">
+                    <span class="text-lg font-bold text-slate-700 italic tracking-tight">SBT事務管理画面</span>
+                </a>
+            </div>
+            <div class="flex items-center gap-6 text-[13px]">
+                <div class="hidden md:flex items-center gap-4">
+                    <span id="display_user_name" class="font-bold">読み込み中...</span>
+                </div>
+                <div class="h-4 w-[1px] bg-slate-200"></div>
+                <a href="https://member.sbt-inc.co.jp/" class="hover:text-red-600 transition-colors">ログアウト</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-12">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {menus.map((menu) => (
+                <a 
+                    href={menu.active ? menu.href : "#"} 
+                    class={`group relative bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm transition-all duration-300 ${menu.active ? 'hover:shadow-2xl hover:-translate-y-2 hover:border-blue-300' : 'opacity-60 grayscale-[0.5] cursor-not-allowed hover:border-slate-300'}`}
+                >
+                    <div class="flex items-start justify-between mb-10">
+                        <div class={`${menu.color} text-white w-16 h-16 flex items-center justify-center rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-500`}>
+                            <i class={`fa-solid ${menu.icon} text-2xl`}></i>
+                        </div>
+                        {menu.status && (
+                            <span class="text-[10px] bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-black tracking-widest border border-slate-200 uppercase shadow-sm">
+                                {menu.status}
+                            </span>
+                        )}
+                    </div>
+                    
+                    <h2 class="text-xl font-bold text-slate-800 mb-3 group-hover:text-blue-600 transition-colors">{menu.title}</h2>
+                    <p class="text-slate-500 text-[13px] leading-relaxed font-medium mb-6">{menu.desc}</p>
+                    
+                    {menu.active && (
+                        <div class="flex items-center gap-2 text-blue-600 font-bold text-xs">
+                            <span class="uppercase tracking-widest">Enter Module</span>
+                            <i class="fa-solid fa-chevron-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
+                        </div>
+                    )}
+                </a>
+            ))}
+        </div>
+    </main>
+</Layout>
+
+<script>
+    (async () => {
+        try {
+            const res = await fetch('/api/get_contacts.php?limit=1', { 
+                credentials: 'include',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (res.status === 401) {
+                window.location.href = `https://member.sbt-inc.co.jp/?return_url=${encodeURIComponent(window.location.href)}`;
+                return;
+            }
+
+            const result = await res.json();
+            if (result.status === 'success' && result.user_name) {
+                const el = document.getElementById('display_user_name');
+                if (el) el.textContent = result.user_name + ' 様';
+            }
+        } catch (e) {
+            console.error('Auth Error:', e);
+            const el = document.getElementById('display_user_name');
+            if (el) el.textContent = 'GUEST USER';
+        }
+    })();
+</script>
+
+<style>
+    :global(body) {
+        background-color: #f1f5f9;
+        font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    }
+</style>

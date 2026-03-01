@@ -1,0 +1,440 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="会社・担当者管理 | SBT事務管理画面">
+    <header class="bg-white border-b sticky top-0 z-50">
+        <div class="max-w-[1400px] mx-auto px-4 h-14 flex items-center justify-between text-slate-600">
+            <div class="flex items-center gap-3">
+                <a href="/" class="hover:opacity-80 transition-opacity flex items-center gap-3">
+                    <img src="/apple-touch-icon.png" alt="Logo" class="w-8 h-8 rounded-lg">
+                    <span class="text-lg font-bold text-slate-700 italic tracking-tight">SBT事務管理画面</span>
+                </a>
+            </div>
+            <div class="flex items-center gap-6 text-[13px]">
+                <div class="hidden md:flex items-center gap-4">
+                    <span id="display_user_name" class="font-bold text-blue-600">認証中...</span>
+                </div>
+                <div class="h-4 w-[1px] bg-slate-200"></div>
+                <a href="https://member.sbt-inc.co.jp/" class="hover:text-red-600 transition-colors">ログアウト</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="p-4 md:p-6 max-w-[1400px] mx-auto">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4 sticky top-[56px] z-40">
+            <div class="flex items-center gap-4 flex-grow max-w-2xl">
+                <div class="relative flex-grow">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="会社、氏名、カナ、メール、メモ..." class="w-full pl-10 pr-20 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                        <span id="searchCount" class="text-[11px] font-bold text-slate-400 bg-slate-200/50 px-2 py-0.5 rounded-md">読み込み中...</span>
+                    </div>
+                </div>
+                <button id="searchBtn" class="bg-slate-800 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition-all">検索</button>
+            </div>
+            <button id="newContactBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> 新規登録
+            </button>
+        </div>
+
+        <div id="contactTableBody" class="space-y-6"></div>
+        <div id="loading" class="py-20 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-200 border-t-blue-600"></div></div>
+    </main>
+
+    <div id="contactModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col m-2 md:m-4">
+            <div class="p-5 border-b flex items-center justify-between bg-slate-50">
+                <h3 id="modalTitle" class="text-lg font-bold text-slate-800 truncate pr-4">担当者操作</h3>
+                <button type="button" id="closeModalX" class="text-slate-400 hover:text-slate-600 flex-shrink-0"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <form id="contactForm" class="overflow-y-auto p-5 md:p-8 bg-white">
+                <input type="hidden" name="id" id="f_id">
+                <input type="hidden" name="company_id" id="f_company_id">
+                
+                <div class="space-y-5">
+                    <div class="grid grid-cols-12 gap-x-4 gap-y-3">
+                        <div class="col-span-4 space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400">姓</label>
+                            <input type="text" name="last_name" id="f_last_name" tabindex="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        <div class="col-span-4 space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400">名</label>
+                            <input type="text" name="first_name" id="f_first_name" tabindex="2" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        <div class="col-span-4 space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400">部署</label>
+                            <input type="text" name="division" id="f_division" tabindex="5" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        
+                        <div class="col-span-4 space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400">姓(カナ)</label>
+                            <input type="text" name="last_kana" id="f_last_kana" tabindex="3" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        <div class="col-span-4 space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400">名(カナ)</label>
+                            <input type="text" name="first_kana" id="f_first_kana" tabindex="4" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        <div class="col-span-4 space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400">役職</label>
+                            <input type="text" name="position" id="f_position" tabindex="6" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400">属性</label>
+                        <select name="sort" id="f_sort" tabindex="7" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="3">3：担当者</option>
+                            <option value="0">0：代表者</option>
+                            <option value="1">1：役員</option>
+                            <option value="2">2：共通アドレス</option>
+                            <option value="9">9：退職者</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-blue-600">メールアドレス</label>
+                            <input type="email" name="email" id="f_email" tabindex="8" class="w-full px-3 py-2 bg-blue-50/30 border border-blue-100 rounded-lg text-sm">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400">電話番号</label>
+                            <input type="text" name="tel" id="f_tel" tabindex="10" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400">個人メールアドレス</label>
+                            <input type="email" name="email_personal" id="f_email_personal" tabindex="9" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-green-600">LINE</label>
+                            <input type="text" name="line" id="f_line" tabindex="11" class="w-full px-3 py-2 bg-green-50/30 border border-green-100 rounded-lg text-sm">
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-wrap items-center gap-x-6 gap-y-2">
+                        <span class="text-[10px] font-bold text-slate-400 w-full md:w-auto md:mr-2">配信設定:</span>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="send_project" id="f_send_project" tabindex="12" value="1" class="w-4 h-4 rounded text-blue-600"><span class="text-xs font-bold text-slate-600">案件</span></label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="send_engineer" id="f_send_engineer" tabindex="13" value="1" class="w-4 h-4 rounded text-emerald-600"><span class="text-xs font-bold text-slate-600">技術者</span></label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="send_event" id="f_send_event" tabindex="14" value="1" class="w-4 h-4 rounded text-purple-600"><span class="text-xs font-bold text-slate-600">イベント</span></label>
+                    </div>
+
+                    <div class="grid grid-cols-12 gap-4 items-end">
+                        <div class="col-span-3">
+                            <label class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer h-[38px]">
+                                <input type="checkbox" name="business_card" id="f_business_card" tabindex="15" value="1" class="w-4 h-4 rounded text-amber-600">
+                                <span class="text-xs font-bold text-slate-600">名刺</span>
+                            </label>
+                        </div>
+                        <div class="col-span-9 space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400">交流会</label>
+                            <input type="number" name="event" id="f_event" tabindex="16" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-rose-500">送信エラー</label>
+                        <input type="text" name="send_error" id="f_send_error" tabindex="17" class="w-full px-3 py-2 bg-rose-50/30 border border-rose-100 rounded-lg text-sm">
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400">備考</label>
+                        <textarea name="memo" id="f_memo" tabindex="18" rows="4" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm min-h-[100px]"></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex gap-3 sticky bottom-0 bg-white pt-4 pb-2">
+                    <button type="submit" class="flex-grow bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 shadow-lg transition-all active:scale-[0.98]">保存する</button>
+                    <button type="button" id="closeModalBtn" class="px-8 py-4 bg-slate-100 text-slate-500 rounded-xl font-bold">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</Layout>
+
+<script>
+    // @ts-nocheck
+    let contacts = [];
+    let offset = 0; 
+    const limit = 100;
+    let isLoading = false; 
+    let hasMore = true;
+    let searchTimeout = null;
+    
+    const API_GET = "/api/get_contacts.php"; 
+    const API_SAVE = "/api/save_contact.php";
+    const HEADERS = { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' };
+
+    async function fetchContacts(isInitial = false) {
+        if (isLoading || (!isInitial && !hasMore)) return;
+        
+        isLoading = true;
+        if (isInitial) {
+            offset = 0;
+            contacts = [];
+            hasMore = true;
+            const container = document.getElementById('contactTableBody');
+            if (container) container.innerHTML = '';
+        }
+        
+        const loadingEl = document.getElementById('loading');
+        if (loadingEl) loadingEl.classList.remove('hidden');
+        
+        const searchInput = document.getElementById('searchInput');
+        const search = searchInput ? searchInput.value : '';
+        
+        try {
+            const res = await fetch(`${API_GET}?limit=${limit}&offset=${offset}&q=${encodeURIComponent(search)}`, {
+                credentials: 'include',
+                headers: HEADERS
+            });
+            const result = await res.json();
+
+            if (result.status === 'success') {
+                const newBatch = result.data || [];
+                // API側で limit が効いていても、hasMore の判定は継続
+                if (newBatch.length < limit) hasMore = false;
+                
+                contacts = [...contacts, ...newBatch];
+                offset += limit;
+
+                renderContacts();
+                
+                // --- 件数表示の修正 ---
+                updateSearchCount(result.total);
+            }
+        } catch (e) {
+            console.error('Fetch error:', e);
+        } finally {
+            isLoading = false;
+            if (loadingEl) loadingEl.classList.add('hidden');
+        }
+    }
+
+    // 件数表示の更新ロジック
+    function updateSearchCount(totalFromServer) {
+        const countEl = document.getElementById('searchCount');
+        if (!countEl) return;
+        
+        // サーバーから渡される「LIMIT前の全該当件数」を優先表示
+        if (totalFromServer !== undefined) {
+            countEl.textContent = `${Number(totalFromServer).toLocaleString()}件`;
+        } else {
+            countEl.textContent = `${contacts.length}件...`;
+        }
+    }
+
+    function renderContacts() {
+        const container = document.getElementById('contactTableBody');
+        if (!container) return;
+        
+        const grouped = contacts.reduce((acc, c) => {
+            if (!acc[c.company_id]) {
+                acc[c.company_id] = {
+                    id: c.company_id,
+                    name: c.company_name || '---',
+                    kana: c.company_kana || '',
+                    url: c.url || '',
+                    members: []
+                };
+            }
+            acc[c.company_id].members.push(c);
+            return acc;
+        }, {});
+
+        container.innerHTML = Object.values(grouped).sort((a, b) => a.kana.localeCompare(b.kana, 'ja')).map(group => `
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
+                <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <a href="${group.url || '#'}" target="_blank" class="text-blue-600 font-bold hover:opacity-70 no-underline" title="会社ID：${group.id}">
+                            ${group.name}
+                        </a>
+                        <span class="text-[11px] text-slate-400">(${group.kana})</span>
+                        <button class="text-slate-300 hover:text-slate-500 transition-colors ml-1" title="会社情報を編集">
+                            <i class="fa-regular fa-pen-to-square text-xs"></i>
+                        </button>
+                    </div>
+                    <button class="text-[10px] font-bold bg-white text-slate-600 border border-slate-200 px-3 py-1 rounded-md hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-1" onclick="openModal({company_id: ${group.id}, company_name: '${group.name.replace(/'/g, "\\'")}'})">
+                        <i class="fa-solid fa-user-plus text-[9px]"></i> 担当者追加
+                    </button>
+                </div>
+                
+                <table class="w-full text-sm table-fixed">
+                    <tbody class="divide-y divide-slate-100">
+                        ${group.members.map(c => {
+                            const isRetired = Number(c.sort) === 9 || (c.memo && c.memo.includes('退職'));
+                            const hasError = c.send_error && String(c.send_error).trim() !== "" && String(c.send_error) !== "0";
+                            const contactIdx = contacts.findIndex(item => item.id === c.id);
+                            
+                            // アイコンの存在判定
+                            const hasTel = c.tel && c.tel.trim() !== '';
+                            const hasLine = c.line && c.line.trim() !== '';
+                            const hasCard = Number(c.business_card) === 1;
+
+                            let iconHtml = '';
+                            const sortVal = Number(c.sort);
+                            if (sortVal === 0) iconHtml = '<i class="fa-solid fa-crown text-amber-400 mr-2"></i>';
+                            else if (sortVal === 1) iconHtml = '<i class="fa-solid fa-crown text-slate-300 mr-2"></i>';
+                            else if (sortVal === 2) iconHtml = '<i class="fa-solid fa-users text-slate-400 mr-2"></i>';
+                            else if (sortVal === 9) iconHtml = '<i class="fa-solid fa-user-slash text-slate-300 mr-2"></i>';
+                            else iconHtml = '<i class="fa-solid fa-user text-transparent mr-2 w-4"></i>';
+
+                            return `
+                                <tr class="contact-row cursor-pointer transition-colors ${isRetired ? 'opacity-40 bg-slate-50' : 'hover:bg-blue-50/50'}" data-idx="${contactIdx}">
+                                    <td class="p-4 w-[20%] overflow-hidden">
+                                        <div class="flex items-center font-bold text-slate-700 truncate">
+                                            ${hasError ? '<i class="fa-solid fa-circle-exclamation text-rose-500 mr-1.5 animate-pulse"></i>' : ''}
+                                            ${iconHtml}${c.last_name || ''} ${c.first_name || ''}
+                                        </div>
+                                        <div class="text-[10px] text-slate-400 ml-6 truncate">${c.last_kana || ''} ${c.first_kana || ''}</div>
+                                    </td>
+                                    
+                                    <td class="p-4 w-[20%] overflow-hidden">
+                                        <div class="truncate text-[11px] text-slate-400">${c.division || '-'}</div>
+                                        <div class="text-[11px] text-slate-400 truncate">${c.position || '-'}</div>
+                                    </td>
+                                    
+                                    <td class="p-4 w-[35%] overflow-hidden">
+                                        <div class="${isRetired ? 'text-slate-400' : 'text-blue-600'} truncate font-medium">${c.email || ''}</div>
+                                        <div class="text-slate-400 text-[10px] truncate">${c.email_personal || ''}</div>
+                                    </td>
+                                    
+                                    <td class="p-4 w-[10%] text-center">
+                                        <div class="flex justify-center gap-1.5">
+                                            <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_project) === 1 ? 'bg-blue-500' : 'bg-slate-200'}" title="案件配信"></div>
+                                            <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_engineer) === 1 ? 'bg-red-300' : 'bg-slate-200'}" title="技術者配信"></div>
+                                            <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_event) === 1 ? 'bg-emerald-500' : 'bg-slate-200'}" title="イベント配信"></div>
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="p-4 w-[15%] text-right">
+                                        <div class="flex justify-end items-center gap-4 pr-2 text-base">
+                                            <i class="fa-solid fa-phone ${hasTel ? 'text-blue-500' : 'text-slate-100'}" title="${c.tel || ''}"></i>
+                                            <i class="fa-brands fa-line ${hasLine ? 'text-green-500' : 'text-slate-100'}" title="${c.line || ''}"></i>
+                                            <i class="fa-solid fa-sticky-note ${c.memo && c.memo.trim() !== '' ? 'text-amber-500' : 'text-slate-100'}" title="${(c.memo || '').replace(/"/g, '&quot;')}"></i>
+                                            <i class="fa-solid fa-address-card ${hasCard ? 'text-amber-500' : 'text-slate-100'}" title="名刺あり"></i>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `).join('');
+
+        container.querySelectorAll('.contact-row').forEach(row => {
+            row.onclick = (e) => {
+                const idx = e.currentTarget.dataset.idx;
+                if (typeof openModal === 'function') openModal(contacts[idx]);
+            };
+        });
+    }
+
+    window.openModal = function(c = null) {
+        const form = document.getElementById('contactForm');
+        if (!form) return;
+        form.reset();
+        
+        const titleEl = document.getElementById('modalTitle');
+        
+        if (c) {
+            const companyName = c.company_name || '';
+            if (c.id) {
+                titleEl.textContent = `${companyName} の担当者を編集`;
+                Object.keys(c).forEach(key => {
+                    const el = document.getElementById('f_' + key);
+                    if (el) {
+                        if (el.type === 'checkbox') {
+                            el.checked = Number(c[key]) === 1;
+                        } else {
+                            // 文字列としてそのままセット。nullやundefinedの場合は空文字にする
+                            el.value = (c[key] !== null && c[key] !== undefined) ? c[key] : '';
+                        }
+                    }
+                });
+            } else if (c.company_id) {
+                // 新規登録時
+                titleEl.textContent = `${companyName} の担当者を追加`;
+                document.getElementById('f_id').value = '';
+                document.getElementById('f_company_id').value = c.company_id;
+                document.getElementById('f_sort').value = "3";
+                document.getElementById('f_send_error').value = ""; // 明示的に空にする
+            }
+        }
+        document.getElementById('contactModal').classList.remove('hidden');
+    }
+
+    window.closeModal = function() { document.getElementById('contactModal').classList.add('hidden'); }
+    
+    // イベントリスナー
+    window.addEventListener('scroll', () => {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+            fetchContacts(false);
+        }
+    });
+
+    const searchInput = document.getElementById('searchInput');
+
+    // インクリメンタルサーチ
+    searchInput.oninput = () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            fetchContacts(true);
+        }, 300);
+    };
+
+    // ESCキーでクリア
+    searchInput.onkeydown = (e) => {
+        if (e.key === 'Escape') {
+            searchInput.value = '';
+            fetchContacts(true);
+        }
+    };
+
+    document.getElementById('searchBtn').onclick = () => fetchContacts(true);
+    document.getElementById('closeModalX').onclick = closeModal;
+    document.getElementById('closeModalBtn').onclick = closeModal;
+    document.getElementById('newContactBtn').onclick = () => openModal();
+
+    document.getElementById('contactForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        
+        // チェックボックスの補完
+        ['send_project', 'send_engineer', 'send_event', 'business_card'].forEach(n => { 
+            if(!formData.has(n)) formData.append(n, '0'); 
+        });
+        
+        try {
+            // headers: HEADERS をやめ、Content-Typeを指定しないようにする
+            const res = await fetch(API_SAVE, { 
+                method: 'POST', 
+                body: formData, 
+                credentials: 'include',
+            });
+
+            // レスポンスがJSONでない（PHPのエラー画面が返った）場合への対策
+            const text = await res.text();
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (jsonErr) {
+                console.error("サーバーからの応答がJSONではありません:", text);
+                throw new Error("サーバーで予期しないエラーが発生しました。");
+            }
+
+            if (result.status === 'success') { 
+                closeModal(); 
+                fetchContacts(true); 
+            } else { 
+                alert('保存に失敗しました: ' + result.message); 
+            }
+        } catch (e) {
+            console.error('Save error:', e);
+            alert('通信エラーが発生しました。詳細はコンソールを確認してください。');
+        }
+    };
+
+    fetchContacts(true);
+</script>
