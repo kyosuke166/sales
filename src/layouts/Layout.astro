@@ -17,8 +17,65 @@ const { title } = Astro.props;
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   </head>
   <body class="bg-gray-50 min-h-screen flex flex-col text-gray-800">
+    <header class="bg-white border-b sticky top-0 z-50">
+        <div class="max-w-[1400px] mx-auto px-4 h-14 flex items-center justify-between text-slate-600">
+            <div class="flex items-center gap-6">
+                <a href="/" class="hover:opacity-80 transition-opacity flex items-center gap-3">
+                    <img src="/apple-touch-icon.png" alt="Logo" class="w-8 h-8 rounded-lg">
+                    <span class="text-lg font-bold text-slate-700 italic tracking-tight">SBT事務管理画面</span>
+                </a>
+
+                <div class="hidden md:flex items-center gap-6 ml-4 border-l pl-6 border-slate-200">
+                    <nav class="flex items-center gap-4 text-[12px] font-bold text-slate-500">
+                        <a href="https://www.sbt-inc.co.jp/" target="_blank" class="hover:text-blue-600">会社HP</a>
+                        <a href="https://www.sbt-inc.co.jp/stats.php" target="_blank" class="hover:text-blue-600">HPログ</a>
+                        <a href="https://member.sbt-inc.co.jp/dashboard/" target="_blank" class="hover:text-blue-600">メンバー</a>
+                        <a href="https://member.sbt-inc.co.jp/admin/" target="_blank" class="hover:text-blue-600">管理</a>
+                    </nav>
+
+                    <div class="flex items-center gap-2 ml-2">
+                        <div class="flex items-center gap-2 ml-2">
+                        <div class="w-3 h-3 rounded-full bg-blue-500 cursor-pointer hover:scale-110 transition-transform" title="案件配信リスト" onclick="handleEmailExtract('send_project')"></div>
+                        <div class="w-3 h-3 rounded-full bg-red-300 cursor-pointer hover:scale-110 transition-transform" title="技術者配信リスト" onclick="handleEmailExtract('send_engineer')"></div>
+                        <div class="w-3 h-3 rounded-full bg-emerald-500 cursor-pointer hover:scale-110 transition-transform" title="イベント配信リスト" onclick="handleEmailExtract('send_event')"></div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6 text-[13px]">
+                <div class="hidden md:flex items-center gap-4">
+                    <span id="display_user_name" class="font-bold">読み込み中...</span>
+                </div>
+                <div class="h-4 w-[1px] bg-slate-200"></div>
+                <a href="https://member.sbt-inc.co.jp/" class="hover:text-red-600 transition-colors">ログアウト</a>
+            </div>
+        </div>
+    </header>
+
     <div class="flex-grow">
       <slot />
+    </div>
+
+    <div id="extractModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[200] flex items-center justify-center hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <h4 id="extractModalTitle" class="font-bold text-slate-700">会社を選択</h4>
+                <button onclick="closeExtractModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="relative mb-4">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" id="extractSearchInput" placeholder="会社名を検索..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div id="extractResultList" class="max-h-60 overflow-y-auto space-y-1 mb-4 border-t pt-2">
+                </div>
+            <div class="border-t pt-4">
+                <button onclick="executeExtract(currentExtractType, null)" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-bold transition-colors">
+                    会社を選択せずにリストを作成
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-400">※選択した会社と同じグループ系列は除外されます</p>
+        </div>
     </div>
 
     <footer class="py-10 border-t bg-white">
@@ -26,6 +83,134 @@ const { title } = Astro.props;
         &copy; 2015 SBT-INC. ALL RIGHTS RESERVED.
       </div>
     </footer>
-    
+
+    <script is:inline>
+        (async () => {
+            try {
+                const res = await fetch('/api/get_contacts.php?limit=1', { 
+                    credentials: 'include',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                });
+                if (res.status === 401) {
+                    window.location.href = `https://member.sbt-inc.co.jp/?return_url=${encodeURIComponent(window.location.href)}`;
+                    return;
+                }
+                const result = await res.json();
+                if (result.status === 'success' && result.user_name) {
+                    const el = document.getElementById('display_user_name');
+                    if (el) el.textContent = result.user_name + ' 様';
+                }
+            } catch (e) {
+                const el = document.getElementById('display_user_name');
+                if (el) el.textContent = 'GUEST USER';
+            }
+        })();
+
+        // メール抽出用ロジック
+        let currentExtractType = '';
+
+        function openExtractModal(type) {
+            currentExtractType = type;
+            document.getElementById('extractModalTitle').textContent = type === 'send_project' ? '案件配信：元会社を選択' : '技術者配信：元会社を選択';
+            document.getElementById('extractModal').classList.remove('hidden');
+            document.getElementById('extractSearchInput').value = '';
+            document.getElementById('extractResultList').innerHTML = '<p class="text-center text-xs text-slate-400 py-4">会社名を入力してください</p>';
+            document.getElementById('extractSearchInput').focus();
+        }
+
+        function closeExtractModal() {
+            document.getElementById('extractModal').classList.add('hidden');
+        }
+
+        // 検索入力時の挙動
+        document.getElementById('extractSearchInput').addEventListener('input', async (e) => {
+            const keyword = e.target.value;
+            if (keyword.length < 2) return;
+
+            // APIを叩く（既存の get_contacts.php を利用）
+            const res = await fetch(`/api/get_contacts.php?q=${encodeURIComponent(keyword)}&limit=50`, { credentials: 'include' });
+            const result = await res.json();
+            
+            const listEl = document.getElementById('extractResultList');
+            listEl.innerHTML = '';
+            
+            // 重複なしの会社リストを作成
+            const companies = [];
+            const seen = new Set();
+
+            if (result.status === 'success' && result.data) {
+                result.data.forEach(item => {
+                    // ここを item.id -> item.company_id / item.name -> item.company_name に変更
+                    if (item.company_id && !seen.has(item.company_id)) {
+                        companies.push({ 
+                            id: item.company_id, 
+                            name: item.company_name || '名称不明' 
+                        });
+                        seen.add(item.company_id);
+                    }
+                });
+            }
+
+            if (companies.length === 0) {
+                listEl.innerHTML = '<p class="text-xs text-slate-400 p-2">見つかりませんでした</p>';
+                return;
+            }
+
+            companies.forEach(c => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-lg transition-colors flex justify-between items-center group';
+                btn.innerHTML = `<span>${c.name}</span><i class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-blue-500"></i>`;
+                btn.onclick = () => executeExtract(currentExtractType, c.id);
+                listEl.appendChild(btn);
+            });
+        });
+
+        async function executeExtract(type, excludeId = null) {
+            try {
+                // IDがない場合はパラメータを付けない、または空にする
+                let url = `/api/extract_emails.php?type=${type}`;
+                if (excludeId) {
+                    url += `&exclude_company_id=${excludeId}`;
+                }
+
+                const res = await fetch(url, { credentials: 'include' });
+                
+                // レスポンスがJSONかどうか確認
+                const text = await res.text();
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    console.error("Server Response:", text);
+                    alert("サーバーエラーが発生しました。PHP側のエラーログを確認してください。");
+                    return;
+                }
+
+                if (result.status === 'success') {
+                    if (!result.data || result.data.trim() === "") {
+                        alert('対象者が0件でした。');
+                    } else {
+                        await navigator.clipboard.writeText(result.data);
+                        alert('クリップボードにコピーしました！\n（' + result.data.split('\n').length + '件）');
+                    }
+                    closeExtractModal();
+                } else {
+                    alert('エラー: ' + result.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('通信エラーが発生しました。');
+            }
+        }
+
+        // ヘッダーのドットへのクリックイベント割り当て
+        window.handleEmailExtract = (type) => {
+            if (type === 'send_event') {
+                executeExtract(type);
+            } else {
+                openExtractModal(type);
+            }
+        };
+    </script>
   </body>
 </html>

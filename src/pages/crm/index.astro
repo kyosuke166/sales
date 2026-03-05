@@ -3,24 +3,6 @@ import Layout from '../../layouts/Layout.astro';
 ---
 
 <Layout title="会社・担当者管理 | SBT事務管理画面">
-    <header class="bg-white border-b sticky top-0 z-50">
-        <div class="max-w-[1400px] mx-auto px-4 h-14 flex items-center justify-between text-slate-600">
-            <div class="flex items-center gap-3">
-                <a href="/" class="hover:opacity-80 transition-opacity flex items-center gap-3">
-                    <img src="/apple-touch-icon.png" alt="Logo" class="w-8 h-8 rounded-lg">
-                    <span class="text-lg font-bold text-slate-700 italic tracking-tight">SBT事務管理画面</span>
-                </a>
-            </div>
-            <div class="flex items-center gap-6 text-[13px]">
-                <div class="hidden md:flex items-center gap-4">
-                    <span id="display_user_name" class="font-bold text-blue-600">認証中...</span>
-                </div>
-                <div class="h-4 w-[1px] bg-slate-200"></div>
-                <a href="https://member.sbt-inc.co.jp/" class="hover:text-red-600 transition-colors">ログアウト</a>
-            </div>
-        </div>
-    </header>
-
     <main class="p-4 md:p-6 max-w-[1400px] mx-auto">
         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4 sticky top-[56px] z-40">
             <div class="flex items-center gap-4 flex-grow max-w-2xl">
@@ -34,7 +16,7 @@ import Layout from '../../layouts/Layout.astro';
                 <button id="searchBtn" class="bg-slate-800 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition-all">検索</button>
             </div>
             <button id="newContactBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 flex items-center gap-2">
-                <i class="fa-solid fa-plus"></i> 新規登録
+                <i class="fa-solid fa-plus"></i> 会社登録
             </button>
         </div>
 
@@ -152,7 +134,7 @@ import Layout from '../../layouts/Layout.astro';
     </div>
 </Layout>
 
-<script>
+<script is:inline>
     // @ts-nocheck
     let contacts = [];
     let offset = 0; 
@@ -160,21 +142,32 @@ import Layout from '../../layouts/Layout.astro';
     let isLoading = false; 
     let hasMore = true;
     let searchTimeout = null;
+    let currentScrollY = 0;
     
     const API_GET = "/api/get_contacts.php"; 
     const API_SAVE = "/api/save_contact.php";
     const HEADERS = { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' };
 
-    async function fetchContacts(isInitial = false) {
-        if (isLoading || (!isInitial && !hasMore)) return;
+    async function fetchContacts(isInitial = false, isRefresh = false) {
+        if (isLoading || (!isInitial && !hasMore && !isRefresh)) return; // isRefresh時は進む
         
         isLoading = true;
+        
+        // リフレッシュ（更新時）は offset を 0 にして、現在の全件数分を取得する
+        let currentLimit = limit;
+        let fetchOffset = offset;
+
         if (isInitial) {
             offset = 0;
             contacts = [];
             hasMore = true;
             const container = document.getElementById('contactTableBody');
             if (container) container.innerHTML = '';
+            fetchOffset = 0;
+        } else if (isRefresh) {
+            // 現在表示されている分（offset分）を丸ごと一気に取得し直す
+            currentLimit = offset; 
+            fetchOffset = 0;
         }
         
         const loadingEl = document.getElementById('loading');
@@ -184,7 +177,8 @@ import Layout from '../../layouts/Layout.astro';
         const search = searchInput ? searchInput.value : '';
         
         try {
-            const res = await fetch(`${API_GET}?limit=${limit}&offset=${offset}&q=${encodeURIComponent(search)}`, {
+            // limit=${currentLimit}&offset=${fetchOffset} を使うように変更
+            const res = await fetch(`${API_GET}?limit=${currentLimit}&offset=${fetchOffset}&q=${encodeURIComponent(search)}`, {
                 credentials: 'include',
                 headers: HEADERS
             });
@@ -192,16 +186,30 @@ import Layout from '../../layouts/Layout.astro';
 
             if (result.status === 'success') {
                 const newBatch = result.data || [];
-                // API側で limit が効いていても、hasMore の判定は継続
-                if (newBatch.length < limit) hasMore = false;
                 
-                contacts = [...contacts, ...newBatch];
-                offset += limit;
+                if (isRefresh) {
+                    // リフレッシュ時は中身をごっそり入れ替える
+                    contacts = newBatch;
+                } else {
+                    // 通常時は追記
+                    if (newBatch.length < limit) hasMore = false;
+                    contacts = [...contacts, ...newBatch];
+                    offset += limit;
+                }
 
                 renderContacts();
-                
-                // --- 件数表示の修正 ---
                 updateSearchCount(result.total);
+
+                // スクロール位置を復元
+                if (isRefresh && currentScrollY > 0) {
+                    setTimeout(() => {
+                        window.scrollTo({
+                            top: currentScrollY,
+                            behavior: 'instant' // パッ！と切り替える設定
+                        });
+                        currentScrollY = 0;
+                    }, 0); // 0msでもイベントループの最後に回されるため効果があります
+                }
             }
         } catch (e) {
             console.error('Fetch error:', e);
@@ -233,7 +241,7 @@ import Layout from '../../layouts/Layout.astro';
                 acc[c.company_id] = {
                     id: c.company_id,
                     name: c.company_name || '---',
-                    kana: c.company_kana || '',
+                    company_kana: c.company_kana || '',
                     url: c.url || '',
                     members: []
                 };
@@ -242,20 +250,20 @@ import Layout from '../../layouts/Layout.astro';
             return acc;
         }, {});
 
-        container.innerHTML = Object.values(grouped).sort((a, b) => a.kana.localeCompare(b.kana, 'ja')).map(group => `
+        container.innerHTML = Object.values(grouped).sort((a, b) => a.company_kana.localeCompare(b.company_kana, 'ja')).map(group => `
             <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
                 <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex justify-between items-center">
                     <div class="flex items-center gap-2">
                         <a href="${group.url || '#'}" target="_blank" class="text-blue-600 font-bold hover:opacity-70 no-underline" title="会社ID：${group.id}">
                             ${group.name}
                         </a>
-                        <span class="text-[11px] text-slate-400 hidden md:inline">(${group.kana})</span>
+                        <span class="text-[11px] text-slate-400 hidden md:inline">(${group.company_kana})</span>
                         <button class="text-slate-300 hover:text-slate-500 transition-colors ml-1" title="会社情報を編集">
                             <i class="fa-regular fa-pen-to-square text-xs"></i>
                         </button>
                     </div>
                     <button class="text-[10px] font-bold bg-white text-slate-600 border border-slate-200 px-3 py-1 rounded-md hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-1" onclick="openModal({company_id: ${group.id}, company_name: '${group.name.replace(/'/g, "\\'")}'})">
-                        <i class="fa-solid fa-user-plus text-[9px]"></i> 担当者追加
+                        <i class="fa-solid fa-user-plus text-[9px]"></i><span class="hidden md:inline">担当者</span>追加
                     </button>
                 </div>
                 
@@ -286,7 +294,6 @@ import Layout from '../../layouts/Layout.astro';
                                         <div class="flex items-center justify-between gap-2">
                                             <div class="flex items-baseline gap-2 flex-wrap min-w-0">
                                                 <div class="flex items-center font-bold text-slate-700 truncate text-base md:text-sm">
-                                                    ${hasError ? '<i class="fa-solid fa-circle-exclamation text-rose-500 mr-1.5 animate-pulse"></i>' : ''}
                                                     ${iconHtml}${c.last_name || ''} ${c.first_name || ''}
                                                 </div>
                                                 <div class="text-[10px] text-slate-400 md:block md:ml-6 truncate">
@@ -295,10 +302,11 @@ import Layout from '../../layouts/Layout.astro';
                                             </div>
                                             
                                             <div class="flex md:hidden items-center gap-4 text-lg">
-                                                <i class="fa-solid fa-phone ${hasTel ? 'text-blue-500' : 'text-slate-100'}"></i>
+                                                ${hasError ? '<i class="fa-solid fa-circle-exclamation text-rose-500 animate-pulse"></i>' : ''}
+                                                <i class="fa-solid fa-phone ${hasTel ? 'text-blue-500' : 'text-slate-100'}" title="${c.tel || ''}"></i>
                                                 <i class="fa-brands fa-line ${hasLine ? 'text-green-500' : 'text-slate-100'}"></i>
                                                 <i class="fa-solid fa-sticky-note ${c.memo && c.memo.trim() !== '' ? 'text-amber-500' : 'text-slate-100'}" title="${(c.memo || '').replace(/"/g, '&quot;')}"></i>
-                                                <i class="fa-solid fa-address-card ${hasCard ? 'text-amber-500' : 'text-slate-100'}"></i>
+                                                <i class="fa-solid fa-address-card ${hasCard ? 'text-sky-400' : 'text-slate-100'}"></i>
                                             </div>
                                         </div>
                                         
@@ -312,11 +320,11 @@ import Layout from '../../layouts/Layout.astro';
                                         <div class="text-[11px] text-slate-400 truncate">${c.position || '-'}</div>
                                     </td>
                                     
-                                    <td class="px-3 py-1 md:p-4 w-full md:w-[35%] overflow-hidden">
+                                    <td class="px-3 py-1 md:p-4 w-full md:w-[30%] overflow-hidden">
                                         <div class="flex items-center justify-between gap-2">
                                             <div class="flex items-center gap-1.5 min-w-0">
                                                 ${window.innerWidth < 768 ? '<i class="fa-regular fa-envelope text-slate-400 text-[10px] flex-shrink-0"></i>' : ''}
-                                                <div class="${isRetired ? 'text-slate-400' : 'text-blue-600'} truncate font-medium text-xs md:text-sm">
+                                                <div class="${(isRetired || (Number(c.send_project) === 0 && Number(c.send_engineer) === 0 && Number(c.send_event) === 0)) ? 'text-slate-400' : 'text-blue-600'} truncate font-medium text-xs md:text-sm">
                                                     ${c.email || ''}
                                                 </div>
                                             </div>
@@ -330,7 +338,7 @@ import Layout from '../../layouts/Layout.astro';
                                         ${c.email_personal ? `<div class="text-slate-400 text-[10px] truncate md:ml-0 ${window.innerWidth < 768 ? 'ml-5' : ''}">${c.email_personal}</div>` : ''}
                                     </td>
                                     
-                                    <td class="hidden md:table-cell p-4 w-[10%] text-center">
+                                    <td class="hidden md:table-cell p-4 w-[10%] border-r border-slate-50">
                                         <div class="flex justify-center gap-1.5">
                                             <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_project) === 1 ? 'bg-blue-500' : 'bg-slate-200'}" title="案件配信"></div>
                                             <div class="w-2.5 h-2.5 rounded-full ${Number(c.send_engineer) === 1 ? 'bg-red-300' : 'bg-slate-200'}" title="技術者配信"></div>
@@ -338,12 +346,13 @@ import Layout from '../../layouts/Layout.astro';
                                         </div>
                                     </td>
                                     
-                                    <td class="hidden md:table-cell p-4 w-[15%] text-right">
-                                        <div class="flex justify-end items-center gap-4 pr-2 text-base">
-                                            <i class="fa-solid fa-phone ${hasTel ? 'text-blue-500' : 'text-slate-100'}"></i>
+                                    <td class="hidden md:table-cell p-4 w-[20%] text-right">
+                                        <div class="flex justify-end items-center gap-4 pr-2 text-base flex-shrink-0">
+                                            ${hasError ? `<i class="fa-solid fa-circle-exclamation text-rose-500 animate-pulse" title="${(c.send_error || '').replace(/"/g, '&quot;')}"></i>` : ''}
+                                            <i class="fa-solid fa-phone ${hasTel ? 'text-blue-500' : 'text-slate-100'}" title="${c.tel || ''}"></i>
                                             <i class="fa-brands fa-line ${hasLine ? 'text-green-500' : 'text-slate-100'}"></i>
                                             <i class="fa-solid fa-sticky-note ${c.memo && c.memo.trim() !== '' ? 'text-amber-500' : 'text-slate-100'}" title="${(c.memo || '').replace(/"/g, '&quot;')}"></i>
-                                            <i class="fa-solid fa-address-card ${hasCard ? 'text-amber-500' : 'text-slate-100'}" title="名刺あり"></i>
+                                            <i class="fa-solid fa-address-card ${hasCard ? 'text-sky-400' : 'text-slate-100'}" title="名刺あり"></i>
                                         </div>
                                     </td>
                                 </tr>
@@ -457,7 +466,8 @@ import Layout from '../../layouts/Layout.astro';
 
             if (result.status === 'success') { 
                 closeModal(); 
-                fetchContacts(true); 
+                currentScrollY = window.scrollY;
+                await fetchContacts(false, true); 
             } else { 
                 alert('保存に失敗しました: ' + result.message); 
             }
