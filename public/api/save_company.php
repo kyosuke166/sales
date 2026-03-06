@@ -1,84 +1,120 @@
 <?php
-// api/save_company.php
 require_once __DIR__ . '/../../auth_check.php';
 header('Content-Type: application/json');
 
 try {
-    // 1. DB接続を確実に取得する
-    $pdo = get_db_connection(); 
-    if (!$pdo) {
-        throw new Exception("Database connection not found.");
+    $pdo = get_db_connection();
+
+    // IDがある場合はUPDATE、ない場合はINSERT
+    $id = !empty($_POST['crm_company_id']) ? (int)$_POST['crm_company_id'] : null;
+
+    /**
+     * 入力値を NULL または 文字列に整形する関数
+     */
+    $toNull = function($key) {
+        $val = isset($_POST[$key]) ? trim($_POST[$key]) : '';
+        return ($val === '') ? null : $val;
+    };
+
+    // 各項目の取得（カラム名に crm_company_ を付与したキーを想定）
+    $company_name  = $toNull('crm_company_name');
+    $company_kana  = $toNull('crm_company_kana');
+    $establish     = $toNull('crm_company_establish');
+    if ($establish) {
+        $establish = preg_replace('/[^0-9\/]/', '', $establish); // スラッシュと数字以外を除去して、形式を整える (例: 2024/03/01)
+        $establish = trim($establish, '/'); // 先頭や末尾のスラッシュを掃除
     }
-    
-    // 2. IDの受け取り名を JS に合わせる (comp_id)
-    $id = $_POST['comp_id'] ?? $_POST['id'] ?? ''; 
-    
-    // crm_companyのテーブル構造
-    $fields = [
-        'company_name', 
-        'company_kana', 
-        'establish', 
-        'company_group',
-        'postal_code', 
-        'prefecture', 
-        'city', 
-        'address', 
-        'tel', 
-        'fax', 
-        'url', 
-        'memo'
-    ];
-    
-    $data = [];
-    foreach ($fields as $f) {
-        $data[$f] = $_POST[$f] ?? null;
-    }
+    $company_group = $toNull('crm_company_group');
+    $url           = $toNull('crm_company_url');
+    $postal_code   = $toNull('crm_company_postal_code');
+    $prefecture    = $toNull('crm_company_prefecture');
+    $city          = $toNull('crm_company_city');
+    $address       = $toNull('crm_company_address');
+    $address       = $toNull('crm_company_address');
+    $tel           = $toNull('crm_company_tel');
+    $fax           = $toNull('crm_company_fax');
+    $fax           = $toNull('crm_company_fax');
+    $memo          = $toNull('crm_company_memo');
+    $status        = $toNull('crm_company_status');
 
     if ($id) {
-        // UPDATE処理
-        $setPart = [];
-        $values = [];
-        
-        foreach ($fields as $f) {
-            // 【重要】POSTデータの中にキーが存在する場合のみ更新対象にする
-            if (array_key_exists($f, $_POST)) {
-                $setPart[] = "{$f} = ?";
-                $values[] = $_POST[$f];
-            }
-        }
-
-        if (empty($setPart)) {
-            throw new Exception("更新するデータがありません。");
-        }
-
-        $values[] = $id;
-        $sql = "UPDATE crm_company SET " . implode(', ', $setPart) . " WHERE id = ?";
-        
+        // 更新処理
+        $sql = "UPDATE crm_company SET 
+                    company_name = :company_name,
+                    company_kana = :company_kana,
+                    establish = :establish,
+                    company_group = :company_group,
+                    postal_code = :postal_code,
+                    prefecture = :prefecture,
+                    city = :city,
+                    address = :address,
+                    tel = :tel,
+                    fax = :fax,
+                    url = :url,
+                    memo = :memo,
+                    status = :status,
+                    updated = CURRENT_TIMESTAMP
+                WHERE id = :id";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($values);
-        
-        $rowCount = $stmt->rowCount();
-        $message = ($rowCount > 0) ? '更新しました' : 'データに変更がないか、IDが見つかりません';
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
     } else {
-        // INSERT処理
-        $placeholders = array_fill(0, count($fields), '?');
-        $sql = "INSERT INTO crm_company (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
+        // 新規登録処理
+        $sql = "INSERT INTO crm_company (
+                    company_name, 
+                    company_kana, 
+                    establish, 
+                    company_group, 
+                    postal_code, 
+                    prefecture, 
+                    city, 
+                    address, 
+                    tel,
+                    fax, 
+                    url,
+                    memo, 
+                    status,
+                    created, 
+                    updated
+                ) VALUES (
+                    :company_name, 
+                    :company_kana, 
+                    :establish, 
+                    :company_group, 
+                    :postal_code, 
+                    :prefecture, 
+                    :city,
+                    :address, 
+                    :tel, 
+                    :fax, 
+                    :url, 
+                    :memo, 
+                    :status,
+                    CURRENT_TIMESTAMP, 
+                    CURRENT_TIMESTAMP
+                )";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute(array_values($data));
-        $id = $pdo->lastInsertId();
-        $message = '登録しました';
     }
 
-    echo json_encode([
-        'status' => 'success', 
-        'message' => $message,
-        'id' => $id
-    ]);
+    // バインド
+    $stmt->bindValue(':company_name', $company_name, PDO::PARAM_STR);
+    $stmt->bindValue(':company_kana', $company_kana, $company_kana === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':establish', $establish, $establish === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':company_group', $company_group, $company_group === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':postal_code', $postal_code, $postal_code === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':prefecture', $prefecture, $prefecture === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':city', $city, $city === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':address', $address, $address === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':tel', $tel, $tel === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':fax', $fax, $fax === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':url', $url, $url === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':memo', $memo, $memo === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':status', $status, $status === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+
+    $stmt->execute();
+
+    echo json_encode(['status' => 'success', 'message' => '会社情報を保存しました']);
 
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode([
-        'status' => 'error', 
-        'message' => $e->getMessage()
-    ]);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
