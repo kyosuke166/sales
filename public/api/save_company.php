@@ -19,10 +19,31 @@ try {
     // 各項目の取得（カラム名に crm_company_ を付与したキーを想定）
     $company_name  = $toNull('crm_company_name');
     $company_kana  = $toNull('crm_company_kana');
-    $establish     = $toNull('crm_company_establish');
+    $establish = $toNull('crm_company_establish');
     if ($establish) {
-        $establish = preg_replace('/[^0-9\/]/', '', $establish); // スラッシュと数字以外を除去して、形式を整える (例: 2024/03/01)
-        $establish = trim($establish, '/'); // 先頭や末尾のスラッシュを掃除
+        // 1. 全角数字を半角に変換
+        $establish = mb_convert_kana($establish, 'n', 'UTF-8');
+        
+        // 2. 「年」「月」「-」「.」などをすべてスラッシュに置き換える
+        $establish = preg_replace('/[年月日\-.]/u', '/', $establish);
+        
+        // 3. 数字とスラッシュ以外の不要な記号を削除
+        $establish = preg_replace('/[^0-9\/]/', '', $establish);
+        
+        // 4. 連続するスラッシュを1つにまとめ、前後のスラッシュを削る
+        $establish = trim(preg_replace('/\/+/', '/', $establish), '/');
+
+        // 5. 「yyyy/m」や「yyyy/m/d」の形式だった場合、月・日を2桁に補完する (例: 2018/4 -> 2018/04)
+        $parts = explode('/', $establish);
+        if (count($parts) >= 2) {
+            // 月を2桁にする
+            $parts[1] = str_pad($parts[1], 2, '0', STR_PAD_LEFT);
+            if (isset($parts[2])) {
+                // 日があれば2桁にする
+                $parts[2] = str_pad($parts[2], 2, '0', STR_PAD_LEFT);
+            }
+            $establish = implode('/', $parts);
+        }
     }
     $company_group = $toNull('crm_company_group');
     $url           = $toNull('crm_company_url');

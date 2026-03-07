@@ -24,13 +24,21 @@ try {
             $whereConditions[] = "(
                 co.company_name LIKE $pName 
                 OR co.company_kana LIKE $pName 
+                OR co.company_group LIKE $pName 
+                OR co.prefecture LIKE $pName 
+                OR co.city LIKE $pName 
+                OR co.address LIKE $pName 
+                OR co.tel LIKE $pName 
+                OR co.fax LIKE $pName 
+                OR co.url LIKE $pName 
+                OR co.memo LIKE $pName 
                 OR c.last_name LIKE $pName 
                 OR c.first_name LIKE $pName 
                 OR c.last_kana LIKE $pName 
                 OR c.first_kana LIKE $pName 
                 OR c.email LIKE $pName 
                 OR c.email_personal LIKE $pName 
-                OR c.position LIKE $pName 
+                OR c.tel LIKE $pName 
                 OR c.memo LIKE $pName 
                 OR CAST(c.send_error AS CHAR) LIKE $pName
             )";

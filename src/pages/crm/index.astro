@@ -319,7 +319,8 @@ import Layout from '../../layouts/Layout.astro';
         
         // グループ化処理
         const grouped = contacts.reduce((acc, c) => {
-            const cid = c.crm_contact_company_id;
+            // 担当者がいなくても存在する c.crm_company_id を基準にする
+            const cid = c.crm_company_id; 
             if (!acc[cid]) {
                 acc[cid] = {
                     id: cid,
@@ -329,6 +330,7 @@ import Layout from '../../layouts/Layout.astro';
                     members: []
                 };
             }
+            // 担当者がいる場合のみmembersに追加（担当者なしの会社も1行表示させるため）
             acc[cid].members.push(c);
             return acc;
         }, {});
@@ -346,7 +348,8 @@ import Layout from '../../layouts/Layout.astro';
                             <i class="fa-regular fa-pen-to-square text-xs"></i>
                         </button>
                     </div>
-                    <button class="text-[10px] font-bold bg-white text-slate-600 border border-slate-200 px-3 py-1 rounded-md hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-1" onclick="event.stopPropagation(); openModal({crm_contact_company_id: ${group.id}, crm_company_company_name: '${group.name.replace(/'/g, "\\'")}'})">
+                    <button class="text-[10px] font-bold bg-white text-slate-600 border border-slate-200 px-3 py-1 rounded-md hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-1" 
+                            onclick="event.stopPropagation(); openModal({crm_contact_company_id: ${group.id}, crm_company_company_name: '${group.name.replace(/'/g, "\\'")}'})">
                         <i class="fa-solid fa-user-plus text-[9px]"></i><span class="hidden md:inline">担当者</span>追加
                     </button>
                 </div>
@@ -462,7 +465,20 @@ import Layout from '../../layouts/Layout.astro';
         container.querySelectorAll('.contact-row').forEach(row => {
             row.onclick = (e) => {
                 const idx = e.currentTarget.dataset.idx;
-                if (typeof openModal === 'function') openModal(contacts[idx]);
+                const data = contacts[idx];
+                
+                // 担当者データ（crm_contact_id）がない場合は、
+                // 編集ではなく「その会社への新規追加」としてモーダルを開く
+                if (!data.crm_contact_id) {
+                    if (typeof openModal === 'function') {
+                        openModal({
+                            crm_contact_company_id: data.crm_company_id,
+                            crm_company_company_name: data.crm_company_company_name
+                        });
+                    }
+                } else {
+                    if (typeof openModal === 'function') openModal(data);
+                }
             };
         });
     }
@@ -470,9 +486,9 @@ import Layout from '../../layouts/Layout.astro';
     window.openModal = function(c = null) {
         const form = document.getElementById('contactForm');
         if (!form) return;
-        form.reset(); // すべての入力をクリア
+        form.reset();
         
-        // 隠しIDフィールドを明示的に空にする（重要）
+        // 隠しフィールドを明示的にクリア（これが漏れると前回のIDが残る）
         document.getElementById('f_crm_contact_id').value = '';
         document.getElementById('f_crm_contact_company_id').value = '';
 
@@ -514,21 +530,25 @@ import Layout from '../../layouts/Layout.astro';
         }
     });
 
-    window.openCompanyModal = function(companyId = null) {
+    window.openCompanyModal = async function(id = null) {
         const form = document.getElementById('companyForm');
         if (!form) return;
         form.reset();
+
+        // IDのリセット
+        const idField = document.getElementById('f_crm_company_id');
+        if (idField) idField.value = '';
         
         const titleEl = document.getElementById('companyModalTitle');
-        
-        if (companyId) {
-            // 既存データの編集（contacts配列の中から該当する会社を探す）
-            const companyData = contacts.find(c => c.crm_contact_company_id == companyId);
-            titleEl.textContent = '会社情報を編集';
+
+        if (id) {
+            // 'id' を使って、画面上のデータ(contacts)から会社情報を探す
+            const companyData = contacts.find(c => c.crm_company_id == id);
             
-            // フォームに値をセット
+            if (titleEl) titleEl.textContent = '会社情報を編集';
+            
             if (companyData) {
-                document.getElementById('f_crm_company_id').value = companyId;
+                document.getElementById('f_crm_company_id').value = id;
                 document.getElementById('f_crm_company_name').value = companyData.crm_company_company_name || '';
                 document.getElementById('f_crm_company_kana').value = companyData.crm_company_company_kana || '';
                 document.getElementById('f_crm_company_establish').value = companyData.crm_company_establish || '';
