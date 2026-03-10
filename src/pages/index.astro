@@ -4,15 +4,20 @@ import Layout from '../layouts/Layout.astro';
 const menus = [
     { 
         title: "会社・担当者管理", 
-        desc: "1.2万件の顧客・パートナーDB。高速検索と属性管理。", 
         icon: "fa-address-book", 
         href: "/crm", 
         color: "bg-blue-600", 
         active: true 
     },
     { 
+        title: "グループ会社一覧", 
+        icon: "fa-layer-group", 
+        href: "/crm/group/", 
+        color: "bg-cyan-500", 
+        active: true 
+    },
+    { 
         title: "Google連絡先連携", 
-        desc: "共有アドレス帳との同期。スマホへの自動反映。", 
         icon: "fa-brands fa-google", 
         href: "#", 
         color: "bg-emerald-600", 
@@ -21,7 +26,6 @@ const menus = [
     },
     { 
         title: "交流会・イベント管理", 
-        desc: "各種交流会の参加者一覧。要取込み情報の抽出。", 
         icon: "fa-people-group", 
         href: "#", 
         color: "bg-amber-500", 
@@ -30,7 +34,6 @@ const menus = [
     },
     { 
         title: "注文書・請求書", 
-        desc: "PDF発行・送付履歴。電子帳簿保存法に対応した管理。", 
         icon: "fa-file-invoice-dollar", 
         href: "#", 
         color: "bg-slate-400", 
@@ -39,7 +42,6 @@ const menus = [
     },
     { 
         title: "TODO・覚書", 
-        desc: "社内タスク・商談進捗。カレンダー連携と期限通知。", 
         icon: "fa-list-check", 
         href: "#", 
         color: "bg-slate-400", 
@@ -48,7 +50,6 @@ const menus = [
     },
     { 
         title: "勤務表・出張手当", 
-        desc: "月次の勤務報告と経費精算、承認フローの管理。", 
         icon: "fa-calendar-check", 
         href: "#", 
         color: "bg-slate-400", 
@@ -57,7 +58,6 @@ const menus = [
     },
     { 
         title: "銀行取引情報", 
-        desc: "入出金明細の自動取得連携。消込作業の自動化。", 
         icon: "fa-building-columns", 
         href: "#", 
         color: "bg-slate-400", 
@@ -66,7 +66,6 @@ const menus = [
     },
     { 
         title: "購買・契約管理", 
-        desc: "備品・サブスク契約の一元管理。更新時期の通知。", 
         icon: "fa-cart-shopping", 
         href: "#", 
         color: "bg-slate-400", 
@@ -75,7 +74,6 @@ const menus = [
     },
     { 
         title: "漏洩情報の管理", 
-        desc: "漏洩されてきた情報の一覧。要取込み情報の抽出。", 
         icon: "fa-gears", 
         href: "#", 
         color: "bg-slate-500", 
@@ -87,36 +85,31 @@ const menus = [
 
 <Layout title="SBT 事務管理ダッシュボード">
     <main class="max-w-6xl mx-auto px-6 py-12">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {menus.map((menu) => (
                 <a 
                     href={menu.active ? menu.href : "#"} 
-                    class={`group relative bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm transition-all duration-300 ${menu.active ? 'hover:shadow-2xl hover:-translate-y-2 hover:border-blue-300' : 'opacity-60 grayscale-[0.5] cursor-not-allowed hover:border-slate-300'}`}
+                    class={`group flex items-center p-5 bg-white rounded-2xl border border-slate-200 shadow-sm transition-all duration-300 ${menu.active ? 'hover:shadow-lg hover:border-blue-400 hover:-translate-y-1' : 'opacity-60 grayscale-[0.5] cursor-not-allowed'}`}
                 >
-                    <div class="flex items-start justify-between mb-8">
-                        <div class={`${menu.color} w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                            <i class={`fa-solid ${menu.icon} text-2xl`}></i>
-                        </div>
-                        {menu.status && (
-                            <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-full tracking-wider">
-                                {menu.status}
-                            </span>
-                        )}
+                    <div class={`${menu.color} w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                        <i class={`fa-solid ${menu.icon} text-xl`}></i>
                     </div>
                     
-                    <h2 class="text-xl font-bold text-slate-800 mb-3 group-hover:text-blue-600 transition-colors">
-                        {menu.title}
-                    </h2>
-                    
-                    <p class="text-slate-500 text-sm leading-relaxed mb-8">
-                        {menu.desc}
-                    </p>
+                    <div class="ml-4 flex-grow min-w-0">
+                        <div class="flex items-center justify-between gap-2">
+                            <h2 class="text-base font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+                                {menu.title}
+                            </h2>
+                            {menu.status && (
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded-md tracking-wider flex-shrink-0 uppercase">
+                                    {menu.status}
+                                </span>
+                            )}
+                        </div>
+                    </div>
 
                     {menu.active && (
-                        <div class="flex items-center gap-2 text-blue-600 text-[11px] font-bold">
-                            <span class="uppercase tracking-widest">Enter Module</span>
-                            <i class="fa-solid fa-chevron-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
-                        </div>
+                        <i class="fa-solid fa-chevron-right text-slate-300 text-xs ml-2 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"></i>
                     )}
                 </a>
             ))}
