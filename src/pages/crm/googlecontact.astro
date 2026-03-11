@@ -19,29 +19,33 @@ import Layout from "../../layouts/Layout.astro";
         <p class="text-3xl font-bold text-green-600" id="google-count">--- <span class="text-base font-normal text-gray-400">件</span></p>
       </div>
       <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
-        <p class="text-sm text-gray-500">Google未登録</p>
+        <p class="text-sm text-gray-500">Google未連携</p>
         <p class="text-3xl font-bold text-orange-500" id="diff-count">--- <span class="text-base font-normal text-gray-400">件</span></p>
       </div>
     </div>
 
     <div class="space-y-4">
-      <section class="bg-gray-50 p-6 rounded-xl border border-gray-200">
+      <section class="bg-gray-50 p-6 rounded-xl border border-gray-500">
         <h2 class="font-bold mb-4 flex items-center gap-2">
-          <span class="text-blue-500">①</span> Googleへの書き出し
+            Googleへの書き出し
         </h2>
         <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
-          <button id="btn-export" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors shadow-sm">
-            未登録分をGoogleへ送る
-          </button>
-          <p class="text-sm text-gray-600">
-            CRMにのみ存在する電話番号を、新規連絡先としてGoogleに作成します。
-          </p>
+            <div class="flex items-center gap-2">
+              <input type="number" id="input-limit" value="100" min="1" max="500" class="w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+              <span class="text-sm font-medium">件</span>
+            </div>
+            <button id="btn-export" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors shadow-sm">
+              未登録分をGoogleへ送る
+            </button>
+            <p class="text-sm text-gray-600">
+              CRMにのみ存在する電話番号を、新規連絡先としてGoogleに作成します。
+            </p>
         </div>
       </section>
 
-      <section class="bg-gray-50 p-6 rounded-xl border border-gray-200">
+      <section class="bg-gray-50 p-6 rounded-xl border border-gray-500">
         <h2 class="font-bold mb-4 flex items-center gap-2">
-          <span class="text-green-500">②</span> データの突合・クレンジング
+          データの突合・クレンジング
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button id="btn-check-diff" class="bg-white border border-gray-300 hover:bg-gray-100 px-4 py-2 rounded shadow-sm text-left">
@@ -87,6 +91,50 @@ import Layout from "../../layouts/Layout.astro";
     } catch (error) {
       console.error("Fetch Error:", error);
     }
+  }
+
+  // 同期実行ボタンの処理を追加
+  const btnExport = document.getElementById('btn-export');
+  const inputLimit = document.getElementById('input-limit'); // 追加
+  const logContainer = document.getElementById('log-container');
+
+  if (btnExport && inputLimit) {
+    btnExport.addEventListener('click', async () => {
+      const limit = inputLimit.value || 100;
+      
+      if (!confirm(`${limit}件の同期を開始します。よろしいですか？`)) return;
+
+      btnExport.disabled = true;
+      btnExport.innerText = '同期中...';
+      if (logContainer) {
+        logContainer.classList.remove('hidden');
+        logContainer.innerHTML += `<p class="text-white mt-2">>>> ${limit}件の同期リクエスト送信中...</p>`;
+      }
+
+      try {
+        // クエリパラメータとして limit を送る
+        const response = await fetch(`/api/google_initial_sync.php?limit=${limit}`);
+        const data = await response.json();
+
+        if (logContainer) {
+          if (data.success) {
+            logContainer.innerHTML += `<p class="text-green-400">成功: ${data.message}</p>`;
+          } else {
+            logContainer.innerHTML += `<p class="text-red-400">エラー: ${data.message}</p>`;
+          }
+          logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        await fetchStats();
+
+      } catch (error) {
+        console.error("Sync Error:", error);
+        if (logContainer) logContainer.innerHTML += `<p class="text-red-400">システムエラーが発生しました。</p>`;
+      } finally {
+        btnExport.disabled = false;
+        btnExport.innerText = '未登録分をGoogleへ送る';
+      }
+    });
   }
 
   // 実行

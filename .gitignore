@@ -23,6 +23,3 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 db-config.php
-composer.json
-composer.lock
-composer.phar

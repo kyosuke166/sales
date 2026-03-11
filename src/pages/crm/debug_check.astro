@@ -1,0 +1,38 @@
+---
+import Layout from "../../layouts/Layout.astro";
+---
+<Layout title="同期データ突合確認">
+  <main class="p-4 overflow-x-auto">
+    <h1 class="text-xl font-bold mb-4">同期済みデータ 100件 突合チェック</h1>
+    <table class="min-w-full bg-white border border-gray-300 text-sm">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="border p-2">CRM 名前 / 会社</th>
+          <th class="border p-2">Google 表示名 / 組織</th>
+          <th class="border p-2">CRM 電話</th>
+          <th class="border p-2">Google 電話</th>
+        </tr>
+      </thead>
+      <tbody id="debug-table">
+        <tr><td colspan="4" class="p-4 text-center">読み込み中...</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <script>
+    async function loadDebug() {
+      const res = await fetch('/api/debug_compare_contacts.php');
+      const data = await res.json();
+      const table = document.getElementById('debug-table');
+      table.innerHTML = data.map(item => `
+        <tr class="${item.crm.tel !== item.google.tel.replace(/\D/g, '') ? 'bg-red-50' : ''}">
+          <td class="border p-2"><b>${item.crm.name}</b><br><span class="text-xs text-gray-500">${item.crm.org}</span></td>
+          <td class="border p-2"><b>${item.google.name}</b><br><span class="text-xs text-blue-500">${item.google.org}</span></td>
+          <td class="border p-2">${item.crm.tel}</td>
+          <td class="border p-2 ${item.google.tel === '番号なし' ? 'text-red-600 font-bold' : ''}">${item.google.tel}</td>
+        </tr>
+      `).join('');
+    }
+    loadDebug();
+  </script>
+</Layout>
