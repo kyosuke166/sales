@@ -1,0 +1,219 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="イベント参加者名簿">
+  <main>
+    <div id="desc-container">
+      <div class="loading">読み込み中...</div>
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  .header-container {
+    margin: 20px 10px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #333;
+  }
+  .header-container h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    position: relative;
+    padding-left: 15px;
+    line-height: 1.4;
+  }
+  .header-container h2::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 10%;
+    height: 80%;
+    width: 5px;
+    background: #28a745;
+    border-radius: 2px;
+  }
+
+  .nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 15px 10px 10px 10px;
+  }
+  .back-link { font-size: 0.9rem; color: #007bff; text-decoration: none; font-weight: bold; }
+
+  .btn-sync {
+    padding: 8px 18px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.85rem;
+  }
+
+  .table-wrapper {
+    margin: 0 10px 30px 10px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .participant-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .participant-table th {
+    background: #333;
+    color: #fff;
+    padding: 12px 10px;
+    font-size: 0.85rem;
+    text-align: left;
+  }
+  .participant-table td {
+    border-bottom: 1px solid #eee;
+    padding: 10px;
+    font-size: 0.9rem;
+    vertical-align: middle;
+  }
+
+  .email-row td {
+    padding-top: 0;
+    padding-bottom: 12px;
+    color: #666;
+    font-size: 0.8rem;
+  }
+
+  /* ボタンを横一列に並べるための設定 */
+  .action-btns {
+    display: flex;
+    gap: 6px; /* ボタン同士の間隔 */
+    align-items: center;
+  }
+
+  .btn-action {
+    /* ここでサイズを完全に固定します */
+    width: 34px;
+    height: 34px;
+    
+    /* フレックスボックスでアイコンをど真ん中に配置 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    padding: 0; /* パディングをリセットしないとズレる原因に */
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  /* アイコン自体のフォントサイズを一律にする */
+  .btn-action i {
+    font-size: 1rem; 
+    display: inline-block;
+    line-height: 1; /* 行間の影響を排除 */
+  }
+
+  /* 各状態のカラー設定 */
+  .linked { background: #e3f2fd; border-color: #1976d2; color: #1976d2; }
+  .unlinked { color: #888; }
+  .btn-send { background: #fff3e0; border-color: #ff9800; color: #e65100; }
+  .btn-nosend { background: #f5f5f5; color: #bbb; border-color: #ddd; }
+
+  .loading { padding: 50px; text-align: center; color: #999; }
+</style>
+
+<script>
+  async function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventId = urlParams.get('id');
+    const container = document.getElementById('desc-container');
+
+    if (!eventId) return;
+
+    try {
+      const response = await fetch(`/api/get_participants.php?event_id=${eventId}`);
+      const result = await response.json();
+
+      if (result.success) {
+        const e = result.event;
+        const dateStr = e.event_date.split(' ')[0].replace(/-/g, '/');
+        const organizer = e.organizer || 'SBT';
+        const headerText = `${dateStr} ${e.event_number} ${e.event_name} ＠ ${e.area}${e.place ? `（${e.place}）` : ''} by ${organizer}`;
+
+        container.innerHTML = `
+          <div class="nav-bar">
+            <a href="/event" class="back-link">← イベント一覧へ戻る</a>
+            <button id="btn-sync-crm" class="btn-sync">CRMと自動照合</button>
+          </div>
+
+          <div class="header-container">
+            <h2>${headerText}</h2>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="participant-table">
+              <thead>
+                <tr>
+                  <th style="width:45px;">No</th>
+                  <th style="width:22%;">会社名</th>
+                  <th style="width:18%;">氏名</th>
+                  <th>コメント</th>
+                  <th style="width:260px;">連携・配信操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${result.participants.map(p => `
+                  <tr>
+                    <td rowspan="2" style="text-align:center; background:#fcfcfc; border-bottom: 1px solid #eee;">
+                      ${p.entry_number}
+                    </td>
+                    <td style="border-bottom:none;"><strong>${p.company_name || ''}</strong></td>
+                    <td style="border-bottom:none;"><strong>${p.participant_name || ''}</strong></td>
+                    <td rowspan="2" style="font-size:0.85rem; color:#555; border-bottom: 1px solid #eee;">
+                      ${p.note || ''}
+                    </td>
+                    <td rowspan="2" style="border-bottom: 1px solid #eee;">
+                      <div class="action-btns">
+                        <button class="btn-action btn-co ${p.company_id ? 'linked' : 'unlinked'}" data-id="${p.id}" title="会社連携">
+                          <i class="fa-solid fa-building"></i>
+                        </button>
+                        <button class="btn-action btn-ct ${p.contact_id ? 'linked' : 'unlinked'}" data-id="${p.id}" title="担当者連携">
+                          <i class="fa-solid fa-user-check"></i>
+                        </button>
+                        <button class="btn-action btn-send-toggle ${p.send_flg == 1 ? 'btn-send' : 'btn-nosend'}" data-id="${p.id}" title="配信設定">
+                          <i class="fa-solid fa-envelope"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="email-row">
+                    <td colspan="2"><small>${p.email || ''}</small></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        document.getElementById('btn-sync-crm').onclick = async () => {
+          const btn = document.getElementById('btn-sync-crm');
+          btn.innerText = "照合中...";
+          const formData = new URLSearchParams();
+          formData.append('event_id', eventId);
+          const res = await fetch('/api/sync_participants.php', { method: 'POST', body: formData });
+          const syncRes = await res.json();
+          alert(syncRes.message);
+          location.reload();
+        };
+      }
+    } catch (e) {
+      container.innerHTML = `<p style="color:red; padding:20px;">エラーが発生しました</p>`;
+    }
+  }
+  init();
+</script>

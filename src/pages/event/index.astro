@@ -1,0 +1,251 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="イベント管理一覧">
+  <main>
+    <div class="header-container">
+      <h2>イベント管理一覧</h2>
+      <div class="controls">
+        <button id="btn-expand-all" class="btn-secondary">全て展開</button>
+        <button id="btn-collapse-all" class="btn-secondary">全て畳む</button>
+      </div>
+    </div>
+    <div id="event-list">読み込み中...</div>
+  </main>
+</Layout>
+
+<style is:global>
+  /* --- 1. タイトルと固定コントロールの装飾 --- */
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 10px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #333;
+  }
+  
+  .header-container h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    position: relative;
+    padding-left: 15px;
+  }
+  
+  .header-container h2::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 15%;
+    height: 70%;
+    width: 5px;
+    background: #007bff;
+    border-radius: 2px;
+  }
+
+  /* 右上固定のコントロールパネル */
+  .controls {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    z-index: 1000; /* 重なり順を一番上に */
+    display: flex;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  /* おしゃれなボタン設定（統合版） */
+  .btn-secondary { 
+    padding: 8px 18px; 
+    font-size: 0.85rem; 
+    font-weight: bold;
+    cursor: pointer; 
+    border: 1.5px solid #007bff; 
+    background: #fff; 
+    color: #007bff;
+    border-radius: 25px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .btn-secondary:hover { 
+    background: #007bff; 
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,123,255,0.3);
+  }
+
+  /* --- 2. 既存のテーブル・セクション構造 --- */
+  .year-section { 
+    margin: 0 10px 15px 10px; 
+    border: 1px solid #333; 
+    border-radius: 8px; 
+    overflow: hidden; 
+  }
+  
+  .year-title { background: #333; color: #fff; padding: 10px 15px; cursor: pointer; font-weight: bold; }
+  .year-title::after { content: ' ▲'; float: right; font-size: 0.7rem; }
+  .year-section.closed .year-title::after { content: ' ▼'; }
+
+  .month-title { 
+    background: #f8f9fa; 
+    padding: 8px 15px 8px 30px; 
+    cursor: pointer; 
+    font-size: 0.95rem; 
+    color: #555;
+    border-top: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+  }
+  .month-title::after { content: ' ▲'; font-size: 0.6rem; }
+  .month-section.closed .month-title::after { content: ' ▼'; }
+
+  .admin-table { 
+    table-layout: fixed;
+    width: calc(100% - 30px);
+    margin-left: 30px;
+    border-collapse: collapse; 
+    background: #fff;
+  }
+
+  .admin-table td { 
+    border-bottom: 1px solid #f0f0f0; 
+    padding: 10px 5px; 
+    font-size: 0.9rem;
+    vertical-align: middle;
+  }
+
+  .admin-table tr:hover { background-color: #fafafa; }
+
+  /* 日付・列幅設定 */
+  .date-box { display: flex; font-family: 'Courier New', Courier, monospace; font-size: 0.9rem; color: #666; }
+  .date-m { width: 22px; text-align: right; }
+  .date-s { width: 12px; text-align: center; }
+  .date-d { width: 22px; text-align: right; }
+  .date-w { width: 45px; text-align: center; color: #999; }
+
+  .col-date { width: 110px; }
+  .col-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col-area { width: 100px; color: #0066cc; cursor: help; }
+  .col-count { width: 120px; text-align: right; color: #666; font-size: 0.85rem; }
+  .col-action { width: 80px; text-align: center; }
+
+  .btn-detail { padding: 5px 12px; background: #007bff; color: #fff; text-decoration: none; border-radius: 4px; font-size: 0.8rem; }
+  .btn-detail:hover { background: #0056b3; }
+
+  /* アコーディオン開閉制御 */
+  .year-section.closed .year-content,
+  .month-section.closed .month-content { display: none; }
+</style>
+
+<script>
+  // 日付をパーツに分けてHTML化する関数
+  const getFormattedDateHtml = (dateStr) => {
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
+    const d = new Date(dateStr);
+    const m = d.getMonth() + 1;
+    const date = d.getDate();
+    const w = days[d.getDay()];
+    
+    return `
+      <div class="date-box">
+        <span class="date-m">${m}</span>
+        <span class="date-s">/</span>
+        <span class="date-d">${date}</span>
+        <span class="date-w">(${w})</span>
+      </div>
+    `;
+  };
+
+  async function loadEvents() {
+    try {
+      const response = await fetch('/api/get_events.php');
+      const result = await response.json();
+      if (!result.success) return;
+
+      const container = document.querySelector('#event-list');
+      if (!container) return;
+
+      const now = new Date();
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setMonth(now.getMonth() - 2);
+
+      // グルーピング処理
+      const grouped = {};
+      result.data.forEach(e => {
+        const d = new Date(e.event_date);
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1;
+        if (!grouped[year]) grouped[year] = { months: {}, hasRecent: false };
+        if (!grouped[year].months[month]) grouped[year].months[month] = [];
+        
+        grouped[year].months[month].push(e);
+        if (d >= twoMonthsAgo) grouped[year].hasRecent = true;
+      });
+
+      let html = '';
+      for (const year in grouped) {
+        const yearClosed = grouped[year].hasRecent ? '' : 'closed';
+        html += `<div class="year-section ${yearClosed}" data-node="year">
+                  <h3 class="year-title" onclick="this.parentElement.classList.toggle('closed')">${year}年</h3>
+                  <div class="year-content">`;
+
+        for (const month in grouped[year].months) {
+          const events = grouped[year].months[month];
+          const isRecentMonth = new Date(events[events.length - 1].event_date) >= twoMonthsAgo;
+          const monthClosed = isRecentMonth ? '' : 'closed';
+
+          html += `
+            <div class="month-section ${monthClosed}" data-node="month">
+              <h4 class="month-title" onclick="this.parentElement.classList.toggle('closed')">${month}月</h4>
+              <div class="month-content">
+                <table class="admin-table">
+                  <tbody>
+                    ${events.map(e => `
+                      <tr>
+                        <td class="col-date">${getFormattedDateHtml(e.event_date)}</td>
+                        <td class="col-name">${e.event_name}</td>
+                        <td class="col-area" title="${e.place || '会場情報なし'}">${e.area || '-'}</td>
+                        <td class="col-count">${e.current_count} / ${e.capacity || '-'} 人</td>
+                        <td class="col-action">
+                          ${e.current_count > 0 
+                            ? `<a href="/event/desc?id=${e.id}" class="btn-detail">詳細</a>` 
+                            : `<span style="color:#ccc; font-size:0.8rem;">-</span>`
+                          }
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>`;
+        }
+        html += `</div></div>`;
+      }
+      container.innerHTML = html;
+
+      // 4. 一番下までスクロール
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 100);
+
+      // 全開・全閉制御
+      document.getElementById('btn-expand-all').onclick = () => {
+        document.querySelectorAll('[data-node]').forEach(el => el.classList.remove('closed'));
+      };
+      document.getElementById('btn-collapse-all').onclick = () => {
+        document.querySelectorAll('[data-node]').forEach(el => el.classList.add('closed'));
+      };
+
+    } catch (e) {
+      console.error("読み込み失敗", e);
+    }
+  }
+
+  loadEvents();
+</script>
