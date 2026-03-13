@@ -25,9 +25,11 @@ try {
     $sql = "
         SELECT 
             ep.*,
-            CONCAT(cc.last_name, ' ', cc.first_name) AS crm_name
+            CONCAT(cc.last_name, ' ', cc.first_name) AS crm_contact_name,
+            co.company_name AS crm_company_name
         FROM events_participant ep
         LEFT JOIN crm_contact cc ON ep.contact_id = cc.id
+        LEFT JOIN crm_company co ON ep.company_id = co.id
         WHERE ep.event_id = ?
         ORDER BY ep.entry_number ASC
     ";

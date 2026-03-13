@@ -179,11 +179,19 @@ import Layout from '../../layouts/Layout.astro';
                     </td>
                     <td rowspan="2" style="border-bottom: 1px solid #eee;">
                       <div class="action-btns">
-                        <button class="btn-action btn-co ${p.company_id ? 'linked' : 'unlinked'}" data-id="${p.id}" title="会社連携">
+                        <button 
+                          class="btn-action btn-co ${p.company_id ? 'linked' : 'unlinked'}" 
+                          onclick="window.openLinkCompanyModal(${p.id})"
+                          title="${p.company_id ? `company_id:${p.company_id} ： ${p.crm_company_name || '名称不明'}` : '会社連携'}"
+                        >
                           <i class="fa-solid fa-building"></i>
                         </button>
-                        <button class="btn-action btn-ct ${p.contact_id ? 'linked' : 'unlinked'}" data-id="${p.id}" title="担当者連携">
-                          <i class="fa-solid fa-user-check"></i>
+
+                        <button 
+                          class="btn-action btn-user ${p.contact_id ? 'linked' : 'unlinked'}" 
+                          title="${p.contact_id ? `contact_id:${p.contact_id} ： ${p.crm_contact_name || '姓名不明'}` : '担当者連携'}"
+                        >
+                          <i class="fa-solid fa-user"></i>
                         </button>
                         <button class="btn-action btn-send-toggle ${p.send_flg == 1 ? 'btn-send' : 'btn-nosend'}" data-id="${p.id}" title="配信設定">
                           <i class="fa-solid fa-envelope"></i>
@@ -199,6 +207,43 @@ import Layout from '../../layouts/Layout.astro';
             </table>
           </div>
         `;
+
+        // 配信フラグ切り替えイベントの委譲
+        container.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.btn-send-toggle');
+            if (!btn) return;
+
+            const id = btn.dataset.id;
+            // 現在の状態をクラス名で判定して反転させる
+            const currentIsSend = btn.classList.contains('btn-send');
+            const newFlg = currentIsSend ? 0 : 1;
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append('id', id);
+                formData.append('send_flg', newFlg);
+
+                const res = await fetch('/api/save_participant.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    // 見た目を即座に切り替える（リロードなしで快適に）
+                    if (newFlg === 1) {
+                        btn.classList.replace('btn-nosend', 'btn-send');
+                    } else {
+                        btn.classList.replace('btn-send', 'btn-nosend');
+                    }
+                } else {
+                    alert('更新に失敗しました');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('通信エラーが発生しました');
+            }
+        });
 
         document.getElementById('btn-sync-crm').onclick = async () => {
           const btn = document.getElementById('btn-sync-crm');

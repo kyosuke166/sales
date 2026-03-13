@@ -360,7 +360,7 @@ import Layout from '../../layouts/Layout.astro';
                             // ★追加：担当者がいない（会社のみのデータ）場合の判定
                             const hasContact = c.crm_contact_id !== null && c.crm_contact_id !== undefined;
 
-                            const isRetired = hasContact && (Number(c.crm_contact_sort) === 9 || (c.crm_contact_memo && c.crm_contact_memo.includes('退職')));
+                            const isRetired = hasContact && Number(c.crm_contact_sort) === 9;
                             const hasError = hasContact && c.crm_contact_send_error && String(c.crm_contact_send_error).trim() !== "" && String(c.crm_contact_send_error) !== "0";
                             const contactIdx = contacts.findIndex(item => item.crm_contact_id === c.crm_contact_id);
                             

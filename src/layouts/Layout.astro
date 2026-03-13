@@ -85,7 +85,7 @@ const { title } = Astro.props;
     </footer>
 
     <script is:inline>
-        // 1. ユーザー名取得処理（そのまま）
+        // 1. ユーザー名取得処理
         (async () => {
             try {
                 const res = await fetch('/api/get_contacts.php?limit=1', { 
@@ -103,13 +103,41 @@ const { title } = Astro.props;
             }
         })();
 
-        // 2. メール抽出用ロジック（グローバル変数としてwindowに定義）
+        // 2. グローバル変数の定義
         window.currentExtractType = '';
+        let currentTargetParticipantId = null; 
+        let isLinkingMode = false;            
 
+        // 3. モーダル操作ロジック
+        // 通常の抽出用（ヘッダーから呼ばれる）
         window.openExtractModal = (type) => {
+            isLinkingMode = false; // 抽出モードに設定
             window.currentExtractType = type;
+            
+            const modal = document.getElementById('extractModal');
+            // 「選択せずに抽出」ボタンを表示
+            const noSelectionBtn = modal.querySelector('button[onclick*="executeExtract"]')?.parentElement;
+            if (noSelectionBtn) noSelectionBtn.style.display = 'block';
+
             document.getElementById('extractModalTitle').textContent = type === 'send_project' ? '案件配信：元会社を選択' : '技術者配信：元会社を選択';
-            document.getElementById('extractModal').classList.remove('hidden');
+            modal.classList.remove('hidden');
+            document.getElementById('extractSearchInput').value = '';
+            document.getElementById('extractResultList').innerHTML = '<p class="text-center text-xs text-slate-400 py-4">会社名を入力してください</p>';
+            setTimeout(() => document.getElementById('extractSearchInput').focus(), 100);
+        };
+
+        // 参加者連携用（交流会ページから呼ばれる）
+        window.openLinkCompanyModal = (participantId) => {
+            currentTargetParticipantId = participantId;
+            isLinkingMode = true; // 連携モードON
+            
+            const modal = document.getElementById('extractModal');
+            // 「選択せずに抽出」ボタンを隠す
+            const noSelectionBtn = modal.querySelector('button[onclick*="executeExtract"]')?.parentElement;
+            if (noSelectionBtn) noSelectionBtn.style.display = 'none';
+
+            document.getElementById('extractModalTitle').textContent = 'CRM会社と連携';
+            modal.classList.remove('hidden');
             document.getElementById('extractSearchInput').value = '';
             document.getElementById('extractResultList').innerHTML = '<p class="text-center text-xs text-slate-400 py-4">会社名を入力してください</p>';
             setTimeout(() => document.getElementById('extractSearchInput').focus(), 100);
@@ -119,65 +147,56 @@ const { title } = Astro.props;
             document.getElementById('extractModal').classList.add('hidden');
         };
 
-        // 3. 検索入力時のイベントリスナー
+        // 4. 検索入力時のイベントリスナー
         document.getElementById('extractSearchInput').addEventListener('input', async (e) => {
             const keyword = e.target.value.trim();
             const listEl = document.getElementById('extractResultList');
-            
-            if (keyword.length < 2) {
-                listEl.innerHTML = '<p class="text-center text-xs text-slate-400 py-4">2文字以上入力してください</p>';
-                return;
-            }
+
+            if (keyword.length < 2) return;
 
             try {
-                // PHPの get_contacts.php を叩く
                 const res = await fetch(`/api/get_contacts.php?q=${encodeURIComponent(keyword)}&limit=50`, { credentials: 'include' });
                 const result = await res.json();
                 
                 listEl.innerHTML = '';
                 const seen = new Set();
-                const companies = [];
 
                 if (result.status === 'success' && result.data) {
                     result.data.forEach(item => {
-                        // ★重要：PHPのエイリアス名（crm_company_id等）に合わせる
-                        const cId = item.crm_company_id;
+                        const cId = item.crm_company_id; 
                         const cName = item.crm_company_company_name;
 
                         if (cId && !seen.has(cId)) {
-                            companies.push({ id: cId, name: cName || '名称不明' });
+                            const btn = document.createElement('button');
+                            btn.className = 'w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-lg transition-colors flex justify-between items-center group';
+                            btn.innerHTML = `<span>${cName}</span><i class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-blue-500"></i>`;
+                            
+                            btn.onclick = () => {
+                                if (isLinkingMode) {
+                                    saveParticipantLink(currentTargetParticipantId, cId);
+                                } else {
+                                    window.executeExtract(window.currentExtractType, cId);
+                                }
+                            };
+                            
+                            listEl.appendChild(btn);
                             seen.add(cId);
                         }
                     });
                 }
-
-                if (companies.length === 0) {
-                    listEl.innerHTML = '<p class="text-xs text-slate-400 p-2 text-center">見つかりませんでした</p>';
-                    return;
-                }
-
-                companies.forEach(c => {
-                    const btn = document.createElement('button');
-                    btn.className = 'w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-lg transition-colors flex justify-between items-center group';
-                    btn.innerHTML = `<span>${c.name}</span><i class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-blue-500"></i>`;
-                    // クリック時に executeExtract を呼ぶ
-                    btn.onclick = () => window.executeExtract(window.currentExtractType, c.id);
-                    listEl.appendChild(btn);
-                });
-            } catch (err) {
-                console.error("Search error:", err);
-                listEl.innerHTML = '<p class="text-xs text-red-400 p-2 text-center">通信エラーが発生しました</p>';
+            } catch (e) {
+                console.error("検索エラー", e);
             }
         });
 
-        // 4. 抽出実行（グローバル関数化）
+        // 5. 抽出実行
         window.executeExtract = async (type, excludeId = null) => {
             try {
                 let url = `/api/extract_emails.php?type=${type}`;
                 if (excludeId) url += `&exclude_company_id=${excludeId}`;
 
                 const res = await fetch(url, { credentials: 'include' });
-                const result = await res.json(); // extract_emails.php は status/data 形式で返る
+                const result = await res.json();
 
                 if (result.status === 'success') {
                     if (!result.data || result.data.trim() === "") {
@@ -196,7 +215,7 @@ const { title } = Astro.props;
             }
         };
 
-        // 5. ヘッダーのドット用（グローバル関数化）
+        // 6. ヘッダーのドット用
         window.handleEmailExtract = (type) => {
             if (type === 'send_event') {
                 window.executeExtract(type);
@@ -204,6 +223,25 @@ const { title } = Astro.props;
                 window.openExtractModal(type);
             }
         };
+
+        // 7. 連携実行用の関数
+        async function saveParticipantLink(pId, coId) {
+            try {
+                const res = await fetch('/api/save_participant.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id=${pId}&company_id=${coId}`
+                });
+                const result = await res.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('保存に失敗しました: ' + result.message);
+                }
+            } catch (e) {
+                alert('通信エラーが発生しました');
+            }
+        }
     </script>
   </body>
 </html>
