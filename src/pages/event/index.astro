@@ -60,7 +60,7 @@ import Layout from '../../layouts/Layout.astro';
     border: 1px solid rgba(0,0,0,0.05);
   }
 
-  /* おしゃれなボタン設定（統合版） */
+  /* ボタン */
   .btn-secondary { 
     padding: 8px 18px; 
     font-size: 0.85rem; 
@@ -144,7 +144,7 @@ import Layout from '../../layouts/Layout.astro';
 </style>
 
 <script>
-  // 日付をパーツに分けてHTML化する関数
+  // 日付をパーツに分けてHTML化
   const getFormattedDateHtml = (dateStr) => {
     const days = ['日', '月', '火', '水', '木', '金', '土'];
     const d = new Date(dateStr);
@@ -209,7 +209,7 @@ import Layout from '../../layouts/Layout.astro';
                     ${events.map(e => `
                       <tr>
                         <td class="col-date">${getFormattedDateHtml(e.event_date)}</td>
-                        <td class="col-name">${e.event_name}</td>
+                        <td class="col-name">${e.event_number} ${e.event_name}</td>
                         <td class="col-area" title="${e.place || '会場情報なし'}">${e.area || '-'}</td>
                         <td class="col-count">${e.current_count} / ${e.capacity || '-'} 人</td>
                         <td class="col-action">

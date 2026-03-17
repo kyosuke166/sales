@@ -65,7 +65,8 @@ try {
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
     } else {
         $sql = "INSERT INTO crm_contact (
-                    company_id, last_name, 
+                    company_id, 
+                    last_name, 
                     first_name, 
                     last_kana, 
                     first_kana,

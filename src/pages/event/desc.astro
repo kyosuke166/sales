@@ -11,119 +11,31 @@ import Layout from '../../layouts/Layout.astro';
 </Layout>
 
 <style is:global>
-  .header-container {
-    margin: 20px 10px;
-    padding-bottom: 10px;
-    border-bottom: 3px solid #333;
-  }
-  .header-container h2 {
-    margin: 0;
-    font-size: 1.2rem;
-    position: relative;
-    padding-left: 15px;
-    line-height: 1.4;
-  }
-  .header-container h2::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 10%;
-    height: 80%;
-    width: 5px;
-    background: #28a745;
-    border-radius: 2px;
-  }
-
-  .nav-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 15px 10px 10px 10px;
-  }
+  /* 既存のスタイルは維持 */
+  .header-container { margin: 20px 10px; padding-bottom: 10px; border-bottom: 3px solid #333; }
+  .header-container h2 { margin: 0; font-size: 1.2rem; position: relative; padding-left: 15px; line-height: 1.4; }
+  .header-container h2::before { content: ""; position: absolute; left: 0; top: 10%; height: 80%; width: 5px; background: #28a745; border-radius: 2px; }
+  .nav-bar { display: flex; justify-content: space-between; align-items: center; margin: 15px 10px 10px 10px; }
   .back-link { font-size: 0.9rem; color: #007bff; text-decoration: none; font-weight: bold; }
+  .btn-sync { padding: 8px 18px; background: #007bff; color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
+  .table-wrapper { margin: 0 10px 30px 10px; border: 1px solid #333; border-radius: 8px; overflow: hidden; background: #fff; }
+  .participant-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .participant-table th { background: #333; color: #fff; padding: 12px 10px; font-size: 0.85rem; text-align: left; }
+  .participant-table td { border-bottom: 1px solid #eee; padding: 10px; font-size: 0.9rem; vertical-align: middle; }
+  .email-row td { padding-top: 0; padding-bottom: 12px; color: #666; font-size: 0.8rem; }
 
-  .btn-sync {
-    padding: 8px 18px;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 25px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 0.85rem;
-  }
+  .action-btns { display: flex; gap: 6px; align-items: center; }
+  .btn-action { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer; transition: all 0.2s; }
+  .btn-action i { font-size: 1rem; display: inline-block; line-height: 1; }
 
-  .table-wrapper {
-    margin: 0 10px 30px 10px;
-    border: 1px solid #333;
-    border-radius: 8px;
-    overflow: hidden;
-    background: #fff;
-  }
-  .participant-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-  }
-  .participant-table th {
-    background: #333;
-    color: #fff;
-    padding: 12px 10px;
-    font-size: 0.85rem;
-    text-align: left;
-  }
-  .participant-table td {
-    border-bottom: 1px solid #eee;
-    padding: 10px;
-    font-size: 0.9rem;
-    vertical-align: middle;
-  }
+  /* メモボタン用の色設定 */
+  .btn-memo { background: #e0f2f1; border-color: #4db6ac; color: #00796b; }
+  .btn-memo.empty { background: #f8f9fa; border-color: #ddd; color: #ccc; }
 
-  .email-row td {
-    padding-top: 0;
-    padding-bottom: 12px;
-    color: #666;
-    font-size: 0.8rem;
-  }
-
-  /* ボタンを横一列に並べるための設定 */
-  .action-btns {
-    display: flex;
-    gap: 6px; /* ボタン同士の間隔 */
-    align-items: center;
-  }
-
-  .btn-action {
-    /* ここでサイズを完全に固定します */
-    width: 34px;
-    height: 34px;
-    
-    /* フレックスボックスでアイコンをど真ん中に配置 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    padding: 0; /* パディングをリセットしないとズレる原因に */
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    background: #f8f9fa;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  /* アイコン自体のフォントサイズを一律にする */
-  .btn-action i {
-    font-size: 1rem; 
-    display: inline-block;
-    line-height: 1; /* 行間の影響を排除 */
-  }
-
-  /* 各状態のカラー設定 */
   .linked { background: #e3f2fd; border-color: #1976d2; color: #1976d2; }
   .unlinked { color: #888; }
   .btn-send { background: #fff3e0; border-color: #ff9800; color: #e65100; }
   .btn-nosend { background: #f5f5f5; color: #bbb; border-color: #ddd; }
-
   .loading { padding: 50px; text-align: center; color: #999; }
 </style>
 
@@ -150,11 +62,9 @@ import Layout from '../../layouts/Layout.astro';
             <a href="/event" class="back-link">← イベント一覧へ戻る</a>
             <button id="btn-sync-crm" class="btn-sync">CRMと自動照合</button>
           </div>
-
           <div class="header-container">
             <h2>${headerText}</h2>
           </div>
-
           <div class="table-wrapper">
             <table class="participant-table">
               <thead>
@@ -181,22 +91,35 @@ import Layout from '../../layouts/Layout.astro';
                       <div class="action-btns">
                         <button 
                           class="btn-action btn-co ${p.company_id ? 'linked' : 'unlinked'}" 
-                          onclick="window.openLinkCompanyModal(${p.id})"
-                          title="${p.company_id ? `company_id:${p.company_id} ： ${p.crm_company_name || '名称不明'}` : '会社連携'}"
+                          onclick="window.openLinkCompanyModal(${p.id})" 
+                          title="${p.company_id ? `会社ID=${p.company_id} : ${p.crm_company_name || ''}` : '会社連携'}"
                         >
                           <i class="fa-solid fa-building"></i>
                         </button>
 
                         <button 
                           class="btn-action btn-user ${p.contact_id ? 'linked' : 'unlinked'}" 
-                          title="${p.contact_id ? `contact_id:${p.contact_id} ： ${p.crm_contact_name || '姓名不明'}` : '担当者連携'}"
+                          title="${p.contact_id ? `担当者ID=${p.contact_id} : ${p.crm_contact_name || ''}` : '担当者連携'}"
                         >
                           <i class="fa-solid fa-user"></i>
                         </button>
-                        <button class="btn-action btn-send-toggle ${p.send_flg == 1 ? 'btn-send' : 'btn-nosend'}" data-id="${p.id}" title="配信設定">
+
+                        <button 
+                          class="btn-action btn-send-toggle ${p.send_flg == 1 ? 'btn-send' : 'btn-nosend'}" 
+                          data-id="${p.id}" 
+                          title="配信設定"
+                        >
                           <i class="fa-solid fa-envelope"></i>
                         </button>
-                      </div>
+
+                        <button 
+                          class="btn-action btn-memo-toggle ${p.memo ? 'btn-memo' : 'empty'}" 
+                          data-id="${p.id}" 
+                          data-memo="${p.memo || ''}" 
+                          title="${p.memo || 'メモ編集'}"
+                        >
+                          <i class="fa-solid fa-note-sticky"></i>
+                        </button>                      </div>
                     </td>
                   </tr>
                   <tr class="email-row">
@@ -208,42 +131,64 @@ import Layout from '../../layouts/Layout.astro';
           </div>
         `;
 
-        // 配信フラグ切り替えイベントの委譲
+        // イベント委譲によるクリック処理
         container.addEventListener('click', async (e) => {
-            const btn = e.target.closest('.btn-send-toggle');
-            if (!btn) return;
+          const btnSend = e.target.closest('.btn-send-toggle');
+          const btnMemo = e.target.closest('.btn-memo-toggle');
 
-            const id = btn.dataset.id;
-            // 現在の状態をクラス名で判定して反転させる
-            const currentIsSend = btn.classList.contains('btn-send');
+          // 1. 配信フラグの切り替え
+          if (btnSend) {
+            const id = btnSend.dataset.id;
+            const currentIsSend = btnSend.classList.contains('btn-send');
             const newFlg = currentIsSend ? 0 : 1;
 
-            try {
-                const formData = new URLSearchParams();
-                formData.append('id', id);
-                formData.append('send_flg', newFlg);
+            await updateParticipant(id, { send_flg: newFlg }, () => {
+              btnSend.classList.toggle('btn-send', newFlg === 1);
+              btnSend.classList.toggle('btn-nosend', newFlg === 0);
+            });
+          }
 
-                const res = await fetch('/api/save_participant.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await res.json();
-
-                if (result.success) {
-                    // 見た目を即座に切り替える（リロードなしで快適に）
-                    if (newFlg === 1) {
-                        btn.classList.replace('btn-nosend', 'btn-send');
-                    } else {
-                        btn.classList.replace('btn-send', 'btn-nosend');
-                    }
-                } else {
-                    alert('更新に失敗しました');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('通信エラーが発生しました');
+          // 2. メモの更新
+          if (btnMemo) {
+            const id = btnMemo.dataset.id;
+            const currentMemo = btnMemo.dataset.memo;
+            const newMemo = prompt('メモを入力してください', currentMemo);
+            
+            if (newMemo !== null && newMemo !== currentMemo) {
+              await updateParticipant(id, { memo: newMemo }, () => {
+                btnMemo.dataset.memo = newMemo;
+                btnMemo.classList.toggle('btn-memo', newMemo.length > 0);
+                btnMemo.classList.toggle('empty', newMemo.length === 0);
+              });
             }
+          }
         });
+
+        // 汎用アップデート関数
+        async function updateParticipant(id, data, successCallback) {
+          try {
+            const formData = new URLSearchParams();
+            formData.append('id', id);
+            for (const key in data) {
+              formData.append(key, data[key]);
+            }
+
+            const res = await fetch('/api/save_participant.php', {
+              method: 'POST',
+              body: formData
+            });
+            const updateResult = await res.json();
+
+            if (updateResult.success) {
+              successCallback();
+            } else {
+              alert('更新に失敗しました');
+            }
+          } catch (err) {
+            console.error(err);
+            alert('通信エラーが発生しました');
+          }
+        }
 
         document.getElementById('btn-sync-crm').onclick = async () => {
           const btn = document.getElementById('btn-sync-crm');

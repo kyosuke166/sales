@@ -24,7 +24,6 @@ const { title } = Astro.props;
                     <img src="/apple-touch-icon.png" alt="Logo" class="w-8 h-8 rounded-lg">
                     <span class="text-lg font-bold text-slate-700 italic tracking-tight">SBT事務管理画面</span>
                 </a>
-
                 <div class="hidden md:flex items-center gap-6 ml-4 border-l pl-6 border-slate-200">
                     <nav class="flex items-center gap-4 text-[12px] font-bold text-slate-500">
                         <a href="https://www.sbt-inc.co.jp/" target="_blank" class="hover:text-blue-600">会社HP</a>
@@ -32,17 +31,13 @@ const { title } = Astro.props;
                         <a href="https://member.sbt-inc.co.jp/dashboard/" target="_blank" class="hover:text-blue-600">メンバー</a>
                         <a href="https://member.sbt-inc.co.jp/admin/" target="_blank" class="hover:text-blue-600">管理</a>
                     </nav>
-
                     <div class="flex items-center gap-2 ml-2">
-                        <div class="flex items-center gap-2 ml-2">
                         <div class="w-3 h-3 rounded-full bg-blue-500 cursor-pointer hover:scale-110 transition-transform" title="案件配信リスト" onclick="handleEmailExtract('send_project')"></div>
                         <div class="w-3 h-3 rounded-full bg-red-300 cursor-pointer hover:scale-110 transition-transform" title="技術者配信リスト" onclick="handleEmailExtract('send_engineer')"></div>
                         <div class="w-3 h-3 rounded-full bg-emerald-500 cursor-pointer hover:scale-110 transition-transform" title="イベント配信リスト" onclick="handleEmailExtract('send_event')"></div>
                     </div>
-                    </div>
                 </div>
             </div>
-
             <div class="flex items-center gap-6 text-[13px]">
                 <div class="hidden md:flex items-center gap-4">
                     <span id="display_user_name" class="font-bold">読み込み中...</span>
@@ -54,8 +49,7 @@ const { title } = Astro.props;
     </header>
 
     <div class="flex-grow">
-      <slot />
-    </div>
+      <slot /> </div>
 
     <div id="extractModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[200] flex items-center justify-center hidden">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-200">
@@ -67,14 +61,12 @@ const { title } = Astro.props;
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                 <input type="text" id="extractSearchInput" placeholder="会社名を検索..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             </div>
-            <div id="extractResultList" class="max-h-60 overflow-y-auto space-y-1 mb-4 border-t pt-2">
-                </div>
+            <div id="extractResultList" class="max-h-60 overflow-y-auto space-y-1 mb-4 border-t pt-2"></div>
             <div class="border-t pt-4">
-                <button onclick="executeExtract(currentExtractType, null)" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-bold transition-colors">
+                <button id="noSelectionBtn" onclick="executeExtract(currentExtractType, null)" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-bold transition-colors">
                     会社を選択せずにリストを作成
                 </button>
             </div>
-            <p class="text-[10px] text-slate-400">※選択した会社と同じグループ系列は除外されます</p>
         </div>
     </div>
 
@@ -109,16 +101,11 @@ const { title } = Astro.props;
         let isLinkingMode = false;            
 
         // 3. モーダル操作ロジック
-        // 通常の抽出用（ヘッダーから呼ばれる）
         window.openExtractModal = (type) => {
-            isLinkingMode = false; // 抽出モードに設定
+            isLinkingMode = false;
             window.currentExtractType = type;
-            
             const modal = document.getElementById('extractModal');
-            // 「選択せずに抽出」ボタンを表示
-            const noSelectionBtn = modal.querySelector('button[onclick*="executeExtract"]')?.parentElement;
-            if (noSelectionBtn) noSelectionBtn.style.display = 'block';
-
+            document.getElementById('noSelectionBtn').parentElement.style.display = 'block';
             document.getElementById('extractModalTitle').textContent = type === 'send_project' ? '案件配信：元会社を選択' : '技術者配信：元会社を選択';
             modal.classList.remove('hidden');
             document.getElementById('extractSearchInput').value = '';
@@ -126,16 +113,11 @@ const { title } = Astro.props;
             setTimeout(() => document.getElementById('extractSearchInput').focus(), 100);
         };
 
-        // 参加者連携用（交流会ページから呼ばれる）
         window.openLinkCompanyModal = (participantId) => {
             currentTargetParticipantId = participantId;
-            isLinkingMode = true; // 連携モードON
-            
+            isLinkingMode = true; 
             const modal = document.getElementById('extractModal');
-            // 「選択せずに抽出」ボタンを隠す
-            const noSelectionBtn = modal.querySelector('button[onclick*="executeExtract"]')?.parentElement;
-            if (noSelectionBtn) noSelectionBtn.style.display = 'none';
-
+            document.getElementById('noSelectionBtn').parentElement.style.display = 'none';
             document.getElementById('extractModalTitle').textContent = 'CRM会社と連携';
             modal.classList.remove('hidden');
             document.getElementById('extractSearchInput').value = '';
@@ -147,30 +129,24 @@ const { title } = Astro.props;
             document.getElementById('extractModal').classList.add('hidden');
         };
 
-        // 4. 検索入力時のイベントリスナー
+        // 4. 検索入力処理
         document.getElementById('extractSearchInput').addEventListener('input', async (e) => {
             const keyword = e.target.value.trim();
             const listEl = document.getElementById('extractResultList');
-
             if (keyword.length < 2) return;
-
             try {
                 const res = await fetch(`/api/get_contacts.php?q=${encodeURIComponent(keyword)}&limit=50`, { credentials: 'include' });
                 const result = await res.json();
-                
                 listEl.innerHTML = '';
                 const seen = new Set();
-
                 if (result.status === 'success' && result.data) {
                     result.data.forEach(item => {
                         const cId = item.crm_company_id; 
                         const cName = item.crm_company_company_name;
-
                         if (cId && !seen.has(cId)) {
                             const btn = document.createElement('button');
                             btn.className = 'w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-lg transition-colors flex justify-between items-center group';
                             btn.innerHTML = `<span>${cName}</span><i class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-blue-500"></i>`;
-                            
                             btn.onclick = () => {
                                 if (isLinkingMode) {
                                     saveParticipantLink(currentTargetParticipantId, cId);
@@ -178,26 +154,21 @@ const { title } = Astro.props;
                                     window.executeExtract(window.currentExtractType, cId);
                                 }
                             };
-                            
                             listEl.appendChild(btn);
                             seen.add(cId);
                         }
                     });
                 }
-            } catch (e) {
-                console.error("検索エラー", e);
-            }
+            } catch (e) { console.error("検索エラー", e); }
         });
 
-        // 5. 抽出実行
+        // 5. 抽出・連携用API呼び出し
         window.executeExtract = async (type, excludeId = null) => {
             try {
                 let url = `/api/extract_emails.php?type=${type}`;
                 if (excludeId) url += `&exclude_company_id=${excludeId}`;
-
                 const res = await fetch(url, { credentials: 'include' });
                 const result = await res.json();
-
                 if (result.status === 'success') {
                     if (!result.data || result.data.trim() === "") {
                         alert('対象者が0件でした。');
@@ -206,41 +177,24 @@ const { title } = Astro.props;
                         alert('クリップボードにコピーしました！\n（' + result.data.split('\n').length + '件）');
                     }
                     window.closeExtractModal();
-                } else {
-                    alert('エラー: ' + result.message);
                 }
-            } catch (e) {
-                console.error(e);
-                alert('抽出エラーが発生しました。');
-            }
+            } catch (e) { alert('抽出エラーが発生しました。'); }
         };
 
-        // 6. ヘッダーのドット用
         window.handleEmailExtract = (type) => {
-            if (type === 'send_event') {
-                window.executeExtract(type);
-            } else {
-                window.openExtractModal(type);
-            }
+            if (type === 'send_event') window.executeExtract(type);
+            else window.openExtractModal(type);
         };
 
-        // 7. 連携実行用の関数
+        // 共通の更新関数（メモや連携で使用）
         async function saveParticipantLink(pId, coId) {
-            try {
-                const res = await fetch('/api/save_participant.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `id=${pId}&company_id=${coId}`
-                });
-                const result = await res.json();
-                if (result.success) {
-                    location.reload();
-                } else {
-                    alert('保存に失敗しました: ' + result.message);
-                }
-            } catch (e) {
-                alert('通信エラーが発生しました');
-            }
+            const formData = new URLSearchParams();
+            formData.append('id', pId);
+            formData.append('company_id', coId);
+            const res = await fetch('/api/save_participant.php', { method: 'POST', body: formData });
+            const result = await res.json();
+            if (result.success) location.reload();
+            else alert('保存に失敗しました');
         }
     </script>
   </body>

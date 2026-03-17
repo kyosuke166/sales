@@ -6,7 +6,8 @@ header('Content-Type: application/json');
 
 $id = $_POST['id'] ?? null;
 $company_id = $_POST['company_id'] ?? null;
-$send_flg = $_POST['send_flg'] ?? null; // 追加
+$send_flg = $_POST['send_flg'] ?? null;
+$memo = $_POST['memo'] ?? null;
 
 if (!$id) {
     echo json_encode(['success' => false, 'message' => 'IDが指定されていません']);
@@ -28,6 +29,12 @@ try {
     if ($send_flg !== null) {
         $updates[] = "send_flg = ?";
         $params[] = $send_flg;
+    }
+
+    // メモの更新がある場合
+    if ($memo !== null) {
+        $updates[] = "memo = ?";
+        $params[] = $memo;
     }
 
     if (empty($updates)) {

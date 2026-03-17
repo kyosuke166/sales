@@ -357,7 +357,7 @@ import Layout from '../../layouts/Layout.astro';
                 <table class="w-full text-sm table-fixed">
                     <tbody class="divide-y divide-slate-100">
                         ${group.members.map(c => {
-                            // ★追加：担当者がいない（会社のみのデータ）場合の判定
+                            // 担当者がいない（会社のみのデータ）場合の判定
                             const hasContact = c.crm_contact_id !== null && c.crm_contact_id !== undefined;
 
                             const isRetired = hasContact && Number(c.crm_contact_sort) === 9;
@@ -395,7 +395,10 @@ import Layout from '../../layouts/Layout.astro';
                                         <div class="flex items-center justify-between gap-2">
                                             <div class="flex items-baseline gap-2 flex-wrap min-w-0">
                                                 <div class="flex items-center font-bold text-slate-700 truncate text-base md:text-sm">
-                                                    ${iconHtml}${displayName}
+                                                    ${iconHtml}
+                                                    <span title="ID: ${c.id || c.crm_contact_id || ''}" class="truncate cursor-help">
+                                                        ${displayName}
+                                                    </span>
                                                 </div>
                                                 <div class="text-[10px] text-slate-400 md:block md:ml-6 truncate">
                                                     ${displayKana}
