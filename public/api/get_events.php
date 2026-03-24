@@ -13,6 +13,7 @@ try {
             e.event_number,
             e.area,
             e.place,
+            e.price,
             e.capacity,
             e.organizer,
             COUNT(ep.id) AS current_count

@@ -1,0 +1,158 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="漏洩リスト管理">
+  <main>
+    <div id="leaked-container">
+      <div class="loading">読み込み中...</div>
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  .header-container { margin: 20px 10px; padding-bottom: 10px; border-bottom: 3px solid #333; }
+  .header-container h2 { margin: 0; font-size: 1.2rem; position: relative; padding-left: 15px; line-height: 1.4; }
+  .header-container h2::before { content: ""; position: absolute; left: 0; top: 10%; height: 80%; width: 5px; background: #dc3545; border-radius: 2px; }
+  
+  .nav-bar { display: flex; justify-content: space-between; align-items: center; margin: 15px 10px 10px 10px; }
+  .back-link { font-size: 0.9rem; color: #007bff; text-decoration: none; font-weight: bold; }
+  
+  .table-wrapper { margin: 0 10px 30px 10px; border: 1px solid #333; border-radius: 8px; overflow: hidden; background: #fff; }
+  .leaked-table { width: 100%; border-collapse: collapse; }
+  .leaked-table th { background: #333; color: #fff; padding: 12px 10px; font-size: 0.85rem; text-align: left; }
+  .leaked-table td { border-bottom: 1px solid #eee; padding: 10px; font-size: 0.9rem; vertical-align: middle; }
+  
+  /* 行クリックで詳細へ */
+  .row-clickable { cursor: pointer; transition: background 0.2s; }
+  .row-clickable:hover { background: #f8f9fa; }
+
+  .count-badge { background: #dc3545; color: white; padding: 2px 10px; border-radius: 15px; font-weight: bold; font-size: 0.8rem; }
+  
+  /* 詳細表示用のステータス */
+  .status-tag { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+  .status-linked { background: #e3f2fd; color: #1976d2; border: 1px solid #bbdefb; }
+  .status-unlinked { background: #f5f5f5; color: #888; border: 1px solid #ddd; }
+  
+  .email-text { color: #666; font-size: 0.8rem; display: block; margin-top: 2px; }
+  .loading { padding: 50px; text-align: center; color: #999; }
+</style>
+
+<script>
+  async function init() {
+    const container = document.getElementById('leaked-container');
+    const urlParams = new URLSearchParams(window.location.search);
+    const sourceDate = urlParams.get('date');
+    const sourceCompany = urlParams.get('company');
+
+    if (sourceDate && sourceCompany) {
+      // --- 詳細表示 (子画面) ---
+      renderDetail(container, sourceDate, sourceCompany);
+    } else {
+      // --- サマリー一覧 (親画面) ---
+      renderSummary(container);
+    }
+  }
+
+  // 親画面：ソース単位の集計一覧
+  async function renderSummary(container) {
+    try {
+      const response = await fetch('/api/get_leakmail.php');
+      const result = await response.json();
+
+      if (!result.success) throw new Error();
+
+      container.innerHTML = `
+        <div class="nav-bar">
+          <span class="back-link">CRM管理ツール</span>
+        </div>
+        <div class="header-container">
+          <h2>情報漏洩元メール一覧（ソース別集計）</h2>
+        </div>
+        <div class="table-wrapper">
+          <table class="leaked-table">
+            <thead>
+              <tr>
+                <th style="width:180px;">取得日</th>
+                <th>発生元会社 / 担当者</th>
+                <th style="width:120px; text-align:center;">漏洩件数</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${result.data.map(s => `
+                <tr class="row-clickable" onclick="location.href='?date=${encodeURIComponent(s.source_date)}&company=${encodeURIComponent(s.source_company)}'">
+                  <td>${s.source_date.replace(/-/g, '/')}</td>
+                  <td>
+                    <strong>${s.source_company}</strong><br>
+                    <small style="color:#666;">${s.source_person}</small>
+                  </td>
+                  <td style="text-align:center;"><span class="count-badge">${Number(s.total_count).toLocaleString()} 件</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } catch (e) {
+      container.innerHTML = `<p style="color:red; padding:20px;">サマリーの取得に失敗しました</p>`;
+    }
+  }
+
+  // 子画面：特定のメールに含まれる宛先一覧
+  async function renderDetail(container, date, company) {
+    try {
+      const response = await fetch(`/api/get_leakmail.php?date=${encodeURIComponent(date)}&company=${encodeURIComponent(company)}`);
+      const result = await response.json();
+
+      container.innerHTML = `
+        <div class="nav-bar">
+          <a href="/leak/" class="back-link">← ソース一覧へ戻る</a>
+        </div>
+        <div class="header-container">
+          <h2>${company} (${date}) 漏洩宛先詳細</h2>
+        </div>
+        <div class="table-wrapper">
+          <table class="leaked-table">
+            <thead>
+              <tr>
+                <th style="width:45px;">No</th>
+                <th style="width:25%;">宛先会社 / カナ</th>
+                <th style="width:20%;">氏名 / メール</th>
+                <th>CRM連携</th>
+                <th>配信宛名</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${result.data.map(d => `
+                <tr>
+                  <td style="text-align:center; background:#fcfcfc;">${d.seq_number}</td>
+                  <td>
+                    <strong>${d.raw_company || '---'}</strong><br>
+                    <small style="color:#999;">${d.raw_company_kana || ''}</small>
+                  </td>
+                  <td>
+                    <strong>${d.raw_person || 'ご担当者'}</strong>
+                    <span class="email-text">${d.email}</span>
+                  </td>
+                  <td>
+                    ${d.contact_id 
+                      ? `<span class="status-tag status-linked">担当者一致 (ID:${d.contact_id})</span>` 
+                      : d.company_id 
+                        ? `<span class="status-tag status-linked" style="background:#fff3e0; color:#e65100; border-color:#ffe0b2;">会社一致 (ID:${d.company_id})</span>`
+                        : `<span class="status-tag status-unlinked">未登録</span>`
+                    }
+                  </td>
+                  <td>${d.send_name || '<small style="color:#ccc;">未設定</small>'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } catch (e) {
+      container.innerHTML = `<p style="color:red; padding:20px;">詳細データの取得に失敗しました</p>`;
+    }
+  }
+
+  init();
+</script>

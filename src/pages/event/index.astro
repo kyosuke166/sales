@@ -13,6 +13,50 @@ import Layout from '../../layouts/Layout.astro';
     </div>
     <div id="event-list">読み込み中...</div>
   </main>
+
+  <div id="context-menu" class="custom-context-menu" style="display:none;">
+    <div id="menu-copy" class="menu-item"><i class="fa-regular fa-copy"></i> このイベントを複製</div>
+  </div>
+
+  <div id="event-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">イベント編集</h3>
+        <button id="modal-close">&times;</button>
+      </div>
+      <form id="event-form">
+        <input type="hidden" name="id" id="form-id">
+        <div class="form-group">
+          <label>開催日時 *</label>
+          <input type="datetime-local" name="event_date" id="form-date" required>
+        </div>
+        <div class="form-group">
+          <label>イベント名 *</label>
+          <input type="text" name="event_name" id="form-name" required>
+        </div>
+        <div class="form-row">
+          <div><label>回数</label><input type="text" name="event_number" id="form-number"></div>
+          <div><label>定員</label><input type="number" name="capacity" id="form-capacity"></div>
+        </div>
+        <div class="form-row">
+          <div><label>エリア</label><input type="text" name="area" id="form-area"></div>
+          <div><label>会場名</label><input type="text" name="place" id="form-place"></div>
+        </div>
+        <div class="form-group">
+          <label>主催者</label>
+          <input type="text" name="organizer" id="form-organizer">
+        </div>
+        <div class="form-group">
+          <label>参加費</label>
+          <input type="number" name="price" id="form-price" placeholder="5000">
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-cancel">キャンセル</button>
+          <button type="submit" class="btn-primary">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </Layout>
 
 <style is:global>
@@ -122,6 +166,16 @@ import Layout from '../../layouts/Layout.astro';
 
   .admin-table tr:hover { background-color: #fafafa; }
 
+  .event-name-text {
+    color: #333; /* イベント名はしっかり濃い色 */
+  }
+
+  .organizer-text {
+    color: #666; /* 主催者は少しだけ薄くして、補足情報だとわかるように */
+    font-size: 0.9em; /* ほんの少し小さくしてもお洒落です */
+    font-weight: normal; /* 指定通り通常文字 */
+  }
+
   /* 日付・列幅設定 */
   .date-box { display: flex; font-family: 'Courier New', Courier, monospace; font-size: 0.9rem; color: #666; }
   .date-m { width: 22px; text-align: right; }
@@ -132,6 +186,7 @@ import Layout from '../../layouts/Layout.astro';
   .col-date { width: 110px; }
   .col-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .col-area { width: 100px; color: #0066cc; cursor: help; }
+  .col-price { width: 90px; text-align: right; color: #333; }
   .col-count { width: 120px; text-align: right; color: #666; font-size: 0.85rem; }
   .col-action { width: 80px; text-align: center; }
 
@@ -141,6 +196,60 @@ import Layout from '../../layouts/Layout.astro';
   /* アコーディオン開閉制御 */
   .year-section.closed .year-content,
   .month-section.closed .month-content { display: none; }
+
+  /* 右クリックメニュー */
+  .custom-context-menu {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    padding: 5px 0;
+    border-radius: 4px;
+  }
+  .menu-item {
+    padding: 8px 20px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .menu-item:hover {
+    background: #f0f7ff;
+    color: #007bff;
+  }
+
+  /* モーダル */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+  }
+  .modal-content {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+  }
+  .form-group { margin-bottom: 15px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+  .form-group label, .form-row label { display: block; font-size: 12px; font-weight: bold; color: #666; }
+  .form-group input, .form-row input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+  .btn-primary { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+  .btn-primary:hover { background: #0056b3; }
 </style>
 
 <script>
@@ -207,11 +316,28 @@ import Layout from '../../layouts/Layout.astro';
                 <table class="admin-table">
                   <tbody>
                     ${events.map(e => `
-                      <tr>
+                      <tr class="event-row clickable" 
+                          data-id="${e.id}" 
+                          data-date="${e.event_date}" 
+                          data-name="${e.event_name}" 
+                          data-number="${e.event_number || ''}" 
+                          data-area="${e.area || ''}" 
+                          data-place="${e.place || ''}" 
+                          data-price="${e.price || 0}" 
+                          data-capacity="${e.capacity || ''}" 
+                          data-organizer="${e.organizer || ''}">
                         <td class="col-date">${getFormattedDateHtml(e.event_date)}</td>
-                        <td class="col-name">${e.event_number} ${e.event_name}</td>
+                        <td class="col-name">
+                          <span class="event-name-text"><strong>${e.event_number || ''} ${e.event_name}</strong></span>
+                          ${e.organizer ? `<span class="organizer-text">（${e.organizer}）</span>` : ''}
+                        </td>
                         <td class="col-area" title="${e.place || '会場情報なし'}">${e.area || '-'}</td>
-                        <td class="col-count">${e.current_count} / ${e.capacity || '-'} 人</td>
+                        
+                        <td class="col-price">
+                          ${e.price ? `￥${Number(e.price).toLocaleString()}` : '-'}
+                        </td>
+
+                        <td class="col-count">${e.current_count || '-'} / ${e.capacity || '-'} 人</td>
                         <td class="col-action">
                           ${e.current_count > 0 
                             ? `<a href="/event/desc?id=${e.id}" class="btn-detail">詳細</a>` 
@@ -229,10 +355,103 @@ import Layout from '../../layouts/Layout.astro';
       }
       container.innerHTML = html;
 
+      let selectedData = null; // 右クリックで選択された行のデータ保持用
+
+      const modal = document.getElementById('event-modal');
+      const form = document.getElementById('event-form');
+      const contextMenu = document.getElementById('context-menu');
+
+      // モーダルを開く関数
+      function openModal(data = null, mode = 'edit') {
+        const titleEl = document.getElementById('modal-title');
+        
+        if (mode === 'edit') {
+          titleEl.innerText = 'イベント情報を編集';
+          document.getElementById('form-id').value = data.id;
+          document.getElementById('form-date').value = data.date.replace(' ', 'T').slice(0, 16);
+          document.getElementById('form-name').value = data.name;
+          document.getElementById('form-number').value = data.number;
+          document.getElementById('form-capacity').value = data.capacity;
+          document.getElementById('form-area').value = data.area;
+          document.getElementById('form-place').value = data.place;
+          document.getElementById('form-price').value = data.price;
+          document.getElementById('form-organizer').value = data.organizer;
+        } else if (mode === 'copy') {
+          titleEl.innerText = 'イベントを複製して新規登録';
+          document.getElementById('form-id').value = ''; // IDを空にして新規扱いにする
+          document.getElementById('form-date').value = data.date.replace(' ', 'T').slice(0, 16);
+          document.getElementById('form-name').value = data.name;
+          // 回数は数値なら+1してあげる（例: #121 -> 122）
+          const nextNum = parseInt(data.number.replace(/[^0-9]/g, '')) + 1;
+          document.getElementById('form-number').value = isNaN(nextNum) ? data.number : `＃${nextNum}`;
+          document.getElementById('form-capacity').value = data.capacity;
+          document.getElementById('form-area').value = data.area;
+          document.getElementById('form-place').value = data.place;
+          document.getElementById('form-organizer').value = data.organizer;
+        }
+        modal.style.display = 'flex';
+      }
+
+      // 右クリックイベントの設定
+      container.oncontextmenu = (e) => {
+        const row = e.target.closest('.event-row');
+        if (!row) return;
+        e.preventDefault();
+        selectedData = row.dataset; // 行のdata属性を取得
+        contextMenu.style.top = `${e.pageY}px`;
+        contextMenu.style.left = `${e.pageX}px`;
+        contextMenu.style.display = 'block';
+      };
+
+      // 左クリックイベントの設定
+      container.onclick = (e) => {
+        const row = e.target.closest('.event-row');
+        if (!row || e.target.closest('.btn-detail')) return;
+        openModal(row.dataset, 'edit');
+      };
+
+      // メニュー外クリックで閉じる
+      document.addEventListener('click', () => {
+        contextMenu.style.display = 'none';
+      });
+
+      // 複製ボタンの挙動
+      document.getElementById('menu-copy').onclick = () => {
+        if (selectedData) openModal(selectedData, 'copy');
+      };
+
+      // モーダル閉じる
+      document.getElementById('modal-close').onclick = () => modal.style.display = 'none';
+      document.getElementById('btn-cancel').onclick = () => modal.style.display = 'none';
+
+      // --- 保存処理 (API送信) ---
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const payload = Object.fromEntries(formData.entries());
+
+        try {
+          const res = await fetch('/api/save_events.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+          if (result.success) {
+            alert('保存しました');
+            location.reload(); // 簡易的にリロードして反映
+          } else {
+            alert('エラー: ' + result.message);
+          }
+        } catch (err) {
+          alert('通信エラーが発生しました');
+        }
+      };
+
       // 4. 一番下までスクロール
-      setTimeout(() => {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-      }, 100);
+      //setTimeout(() => {
+      //  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      //}, 100);
 
       // 全開・全閉制御
       document.getElementById('btn-expand-all').onclick = () => {
