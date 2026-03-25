@@ -7,6 +7,9 @@ import Layout from '../../layouts/Layout.astro';
     <div class="header-container">
       <h2>イベント管理一覧</h2>
       <div class="controls">
+        <a href="/event/sample_participant.csv" download="sample_participant.csv" class="btn-secondary btn-download">
+          <i class="fa-solid fa-download"></i> フォーマット
+        </a>
         <button id="btn-expand-all" class="btn-secondary">全て展開</button>
         <button id="btn-collapse-all" class="btn-secondary">全て畳む</button>
       </div>
@@ -106,6 +109,10 @@ import Layout from '../../layouts/Layout.astro';
 
   /* ボタン */
   .btn-secondary { 
+    display: inline-flex;
+    align-items: center;
+    gap: 6px; /* アイコンと文字の間隔 */
+    text-decoration: none; /* リンクの下線を消す */
     padding: 8px 18px; 
     font-size: 0.85rem; 
     font-weight: bold;
@@ -115,6 +122,19 @@ import Layout from '../../layouts/Layout.astro';
     color: #007bff;
     border-radius: 25px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ダウンロードボタン専用（少し色を変えて区別してもOK） */
+  .btn-download {
+    border-color: #6c757d;
+    color: #6c757d;
+  }
+
+  .btn-download:hover {
+    background: #6c757d;
+    color: #fff;
+    border-color: #6c757d;
+    box-shadow: 0 4px 10px rgba(108, 117, 125, 0.3);
   }
 
   .btn-secondary:hover { 
@@ -183,12 +203,12 @@ import Layout from '../../layouts/Layout.astro';
   .date-d { width: 22px; text-align: right; }
   .date-w { width: 45px; text-align: center; color: #999; }
 
-  .col-date { width: 110px; }
-  .col-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .col-area { width: 100px; color: #0066cc; cursor: help; }
-  .col-price { width: 90px; text-align: right; color: #333; }
-  .col-count { width: 120px; text-align: right; color: #666; font-size: 0.85rem; }
-  .col-action { width: 80px; text-align: center; }
+  .col-date   { width: 110px; }
+  .col-name   { font-weight: bold; } /* ここは可変 */
+  .col-area   { width: 100px; color: #0066cc; }
+  .col-price  { width: 90px; text-align: right; }
+  .col-count  { width: 100px; text-align: center; }
+  .col-action { width: 60px; text-align: center; }  /* ボタン専用 */
 
   .btn-detail { padding: 5px 12px; background: #007bff; color: #fff; text-decoration: none; border-radius: 4px; font-size: 0.8rem; }
   .btn-detail:hover { background: #0056b3; }
@@ -250,6 +270,75 @@ import Layout from '../../layouts/Layout.astro';
   .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
   .btn-primary { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
   .btn-primary:hover { background: #0056b3; }
+
+  /* 人数がいる時のリンクバッジ */
+  .count-link {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 10px;
+    background: #e3f2fd;
+    color: #007bff;
+    text-decoration: none;
+    border-radius: 20px;
+    min-width: 70px;
+  }
+  .count-link:hover {
+    background: #007bff;
+    color: #fff;
+  }
+  .count-num { font-size: 1.1rem; }
+  .count-sep { opacity: 0.4; }
+  .count-cap { font-size: 0.9rem; }
+
+  /* 0人の時の表示 */
+  .no-participant-wrapper {
+    display: inline-flex; /* flexからinline-flexに変更 */
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 100px; /* 余裕を持たせる */
+  }
+  .count-zero { color: #bbb; font-size: 0.85rem; }
+
+  /* 控えめだけど押しやすい登録ボタン */
+  .btn-add-minimal {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px dashed #ccc;
+    background: #fff;
+    color: #999;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+  .btn-add-minimal:hover {
+    border-style: solid;
+    border-color: #28a745;
+    color: #28a745;
+    background: #e8f5e9;
+    transform: scale(1.1);
+  }
+
+  .no-participant-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 80px; /* 幅を固定してガタつきを抑える */
+  }
+
+  .count-link {
+    min-width: 90px;
+    display: inline-flex;
+    justify-content: center;
+    white-space: nowrap; /* 折り返し防止 */
+  }
 </style>
 
 <script>
@@ -269,6 +358,48 @@ import Layout from '../../layouts/Layout.astro';
         <span class="date-w">(${w})</span>
       </div>
     `;
+  };
+
+  // CSVインポートを起動する関数
+  window.triggerImport = (eventId, eventName) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.name = 'csv';
+
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/api/import_participants.php'; // ★相対パス
+      form.enctype = 'multipart/form-data';
+      form.style.display = 'none'; // 画面には出さない
+
+      const idInput = document.createElement('input');
+      idInput.type = 'hidden';
+      idInput.name = 'event_id';
+      idInput.value = eventId;
+      form.appendChild(idInput);
+
+      // input自体をフォームに移動
+      form.appendChild(input);
+
+      // 送信ボタンをダミーで作る
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      form.appendChild(submitBtn);
+
+      document.body.appendChild(form);
+
+      // 直接 submit() するのではなく、ボタンをクリックさせる
+      setTimeout(() => {
+        submitBtn.click(); 
+      }, 50);
+    };
+
+    input.click();
   };
 
   async function loadEvents() {
@@ -310,46 +441,50 @@ import Layout from '../../layouts/Layout.astro';
           const monthClosed = isRecentMonth ? '' : 'closed';
 
           html += `
-            <div class="month-section ${monthClosed}" data-node="month">
-              <h4 class="month-title" onclick="this.parentElement.classList.toggle('closed')">${month}月</h4>
-              <div class="month-content">
-                <table class="admin-table">
-                  <tbody>
-                    ${events.map(e => `
-                      <tr class="event-row clickable" 
-                          data-id="${e.id}" 
-                          data-date="${e.event_date}" 
-                          data-name="${e.event_name}" 
-                          data-number="${e.event_number || ''}" 
-                          data-area="${e.area || ''}" 
-                          data-place="${e.place || ''}" 
-                          data-price="${e.price || 0}" 
-                          data-capacity="${e.capacity || ''}" 
-                          data-organizer="${e.organizer || ''}">
+          <div class="month-section ${monthClosed}" data-node="month">
+            <h4 class="month-title" onclick="this.parentElement.classList.toggle('closed')">${month}月</h4>
+            <div class="month-content">
+              <table class="admin-table">
+                <tbody>
+                  ${events.map(e => {
+                    // キャパ設定がない場合の表示制御
+                    const capDisplay = e.capacity ? e.capacity : '-';
+                    const currentCount = e.current_count || 0;
+                    
+                    return `
+                      <tr class="event-row">
                         <td class="col-date">${getFormattedDateHtml(e.event_date)}</td>
-                        <td class="col-name">
-                          <span class="event-name-text"><strong>${e.event_number || ''} ${e.event_name}</strong></span>
+                        <td class="col-name" onclick="openModal(this.closest('tr').dataset, 'edit')" title="編集">
+                          <strong>${e.event_number || ''} ${e.event_name}</strong>
                           ${e.organizer ? `<span class="organizer-text">（${e.organizer}）</span>` : ''}
                         </td>
-                        <td class="col-area" title="${e.place || '会場情報なし'}">${e.area || '-'}</td>
-                        
-                        <td class="col-price">
-                          ${e.price ? `￥${Number(e.price).toLocaleString()}` : '-'}
+                        <td class="col-area" title="${e.place || ''}">${e.area || '-'}</td>
+                        <td class="col-price">${e.price ? `￥${Number(e.price).toLocaleString()}` : '-'}</td>
+
+                        <td class="col-count">
+                          ${currentCount > 0 ? `
+                            <a href="/event/desc?id=${e.id}" class="count-link">
+                              <span class="count-num">${currentCount}</span><span class="count-sep">/</span><span class="count-cap">${capDisplay}</span>
+                            </a>
+                          ` : `
+                            <span class="count-zero">0 / ${capDisplay}</span>
+                          `}
                         </td>
 
-                        <td class="col-count">${e.current_count || '-'} / ${e.capacity || '-'} 人</td>
                         <td class="col-action">
-                          ${e.current_count > 0 
-                            ? `<a href="/event/desc?id=${e.id}" class="btn-detail">詳細</a>` 
-                            : `<span style="color:#ccc; font-size:0.8rem;">-</span>`
-                          }
+                          <button onclick="event.stopPropagation(); triggerImport(${e.id}, '${e.event_name}')" 
+                                  class="btn-add-minimal" title="参加者をCSV登録">
+                            <i class="fa-solid fa-file-import"></i>
+                          </button>
                         </td>
                       </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            </div>`;
+                      `;
+                    }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          `;
         }
         html += `</div></div>`;
       }
@@ -405,9 +540,13 @@ import Layout from '../../layouts/Layout.astro';
 
       // 左クリックイベントの設定
       container.onclick = (e) => {
-        const row = e.target.closest('.event-row');
-        if (!row || e.target.closest('.btn-detail')) return;
-        openModal(row.dataset, 'edit');
+        // .col-name（名前の列）の中をクリックした時に編集モーダルへ
+        const nameCell = e.target.closest('.col-name');
+        if (nameCell) {
+          const row = nameCell.closest('.event-row');
+          openModal(row.dataset, 'edit');
+          return;
+        }
       };
 
       // メニュー外クリックで閉じる
