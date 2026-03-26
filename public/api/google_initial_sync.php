@@ -126,7 +126,7 @@ try {
 
         if (isset($googlePhones[$cleanCrmTel])) {
             // A. すでにGoogleに番号があった場合
-            $updateStmt = $pdo->prepare("UPDATE crm_contact SET google_resource_id = :gid, google_last_sync = NOW() WHERE id = :id");
+            $updateStmt = $pdo->prepare("UPDATE crm_contact SET google_resource_id = :gid WHERE id = :id");
             $updateStmt->execute([':gid' => $googlePhones[$cleanCrmTel], ':id' => $contact['id']]);
             $linkedCount++;
         } else {

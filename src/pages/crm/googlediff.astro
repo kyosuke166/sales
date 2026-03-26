@@ -1,0 +1,242 @@
+---
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Google連絡先 差異チェック">
+  <main class="p-6 max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold flex items-center gap-2 text-gray-800">
+        <span class="icon-[material-symbols--compare-arrows] text-blue-600"></span> データの差異をチェック
+      </h1>
+      <a href="/crm/googlecontact" class="text-sm text-blue-600 hover:underline">← 同期管理に戻る</a>
+    </div>
+
+    <div id="diff-stats" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 hidden text-center">
+      <div class="bg-gray-100 p-4 rounded-lg border border-gray-300">
+        <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">差異の総数</p>
+        <p class="text-3xl font-bold text-gray-800" id="total-diff">0 <span class="text-base font-normal">件</span></p>
+      </div>
+      <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+        <p class="text-xs text-green-700 font-bold uppercase tracking-wider">CRM担当者情報が正</p>
+        <p class="text-3xl font-bold text-green-900" id="crm-sei-count">0 <span class="text-base font-normal">件</span></p>
+      </div>
+      <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <p class="text-xs text-blue-700 font-bold uppercase tracking-wider">Google連絡先が正</p>
+        <p class="text-3xl font-bold text-blue-900" id="google-sei-count">0 <span class="text-base font-normal">件</span></p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-4 mb-6 items-center">
+      <div class="inline-flex rounded-md shadow-sm" role="group">
+        <button type="button" id="tab-all" class="px-5 py-2 text-sm font-medium border border-gray-200 rounded-l-lg hover:bg-gray-100 active-tab">
+          すべて
+        </button>
+        <button type="button" id="tab-crm" class="px-5 py-2 text-sm font-medium border-t border-b border-gray-200 hover:bg-gray-100">
+          CRM担当者情報が正
+        </button>
+        <button type="button" id="tab-google" class="px-5 py-2 text-sm font-medium border border-gray-200 rounded-r-lg hover:bg-gray-100">
+          Google連絡先が正
+        </button>
+      </div>
+      
+      <button id="btn-refresh" class="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 flex items-center gap-2 text-sm font-medium shadow-sm">
+        <span class="icon-[material-symbols--refresh]"></span> 最新の状態に更新
+      </button>
+    </div>
+
+    <div id="loading" class="text-center py-24 bg-white rounded-xl shadow-sm border border-gray-200">
+      <div class="animate-spin inline-block w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full" role="status"></div>
+      <p class="mt-4 text-gray-500 font-medium">Google連絡先と照合中...</p>
+    </div>
+
+    <div id="diff-container" class="space-y-6"></div>
+
+  </main>
+</Layout>
+
+<script is:inline>
+  let allDiffs = [];
+  let currentTab = 'all';
+
+  const container = document.getElementById('diff-container');
+  const loading = document.getElementById('loading');
+  const statsArea = document.getElementById('diff-stats');
+
+  async function fetchDiff() {
+    loading.classList.remove('hidden');
+    container.innerHTML = '';
+    statsArea.classList.add('hidden');
+
+    try {
+      // 直アクセスで成功しているURLに変更
+      const res = await fetch('/api/google_diff.php'); 
+      if (!res.ok) throw new Error('サーバーエラーが発生しました');
+      
+      const data = await res.json();
+      if (data.success) {
+        allDiffs = data.diff_list;
+        renderDiffs();
+        updateStats();
+      } else {
+        alert("エラー: " + data.error);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("通信エラーが発生しました。詳細はコンソールを確認してください。");
+    } finally {
+      loading.classList.add('hidden');
+      statsArea.classList.remove('hidden');
+    }
+  }
+
+  function updateStats() {
+    document.getElementById('total-diff').innerText = allDiffs.length;
+    document.getElementById('crm-sei-count').innerText = allDiffs.filter(d => !d.is_google_sei).length;
+    document.getElementById('google-sei-count').innerText = allDiffs.filter(d => d.is_google_sei).length;
+  }
+
+  function renderDiffs() {
+    const filtered = allDiffs.filter(d => {
+      if (currentTab === 'google') return d.is_google_sei;
+      if (currentTab === 'crm') return !d.is_google_sei;
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="p-20 text-center text-gray-400">差異は見つかりませんでした</div>';
+      return;
+    }
+
+    const htmlStack = filtered.map(item => {
+      const cardBg = item.is_google_sei ? 'bg-blue-50' : 'bg-green-50';
+      const borderColor = item.is_google_sei ? 'border-blue-100' : 'border-green-100';
+      const accentColor = item.is_google_sei ? 'text-blue-500' : 'text-green-500';
+
+      const rows = [
+        { label: '氏名', data: item.details.name },
+        { label: '会社名', data: item.details.company },
+        { label: '部署', data: item.details.dept },
+        { label: '役職', data: item.details.title },
+        { label: '電話番号', data: item.details.tel },
+        { label: 'メール', data: item.details.email }
+      ];
+
+      const tableRowsHtml = rows.map((r, index) => `
+        <tr class="border-b border-gray-100/50 last:border-0 relative">
+          <td class="py-2.5 px-4 text-[10px] font-bold text-gray-400 w-24 uppercase tracking-wider">${r.label}</td>
+          <td class="py-2.5 px-4 text-sm w-[40%] ${r.data.diff ? 'text-red-600 font-bold' : 'text-gray-600'}">
+            ${r.data.crm || '－'}
+          </td>
+          <td class="w-16 p-0"></td> <td class="py-2.5 px-4 text-sm w-[40%] ${r.data.diff ? 'text-gray-900 font-medium' : 'text-gray-400 text-opacity-70'}">
+            ${r.data.google || '－'}
+          </td>
+        </tr>
+      `).join('');
+
+      return `
+        <div class="group rounded-2xl bg-white border ${borderColor} shadow-sm hover:shadow-md transition-all mb-6 relative overflow-hidden">
+          <div class="absolute inset-0 ${cardBg} pointer-events-none"></div>
+
+          <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 flex items-center z-20 pt-10">
+            <button onclick="updateSingle('${item.crm_id}', '${item.google_id}')" 
+                    class="flex flex-col items-center gap-1 group/btn">
+              <div class="w-11 h-11 bg-white border-2 border-gray-100 rounded-full flex items-center justify-center shadow-sm group-hover/btn:border-blue-500 group-hover/btn:scale-110 transition-all">
+                <i class="fa-solid fa-circle-arrow-right text-2xl text-gray-300 group-hover/btn:text-blue-500 transition-colors"></i>
+              </div>
+              <span class="text-[10px] font-bold text-gray-400 group-hover/btn:text-blue-600 tracking-tighter bg-white/80 px-1.5 rounded">更新する</span>
+            </button>
+          </div>
+
+          <table class="w-full text-left border-collapse table-fixed relative z-10">
+            <thead>
+              <tr class="border-b border-gray-100 bg-white/60">
+                <th class="py-3 px-4 w-24"></th>
+                <th class="py-3 px-4">
+                   <div class="flex items-center gap-2 text-[12px] font-bold text-green-700">
+                     <i class="fa-solid fa-database opacity-50"></i> CRM情報
+                   </div>
+                </th>
+                <th class="w-16"></th>
+                <th class="py-3 px-4">
+                   <div class="flex items-center gap-2 text-[12px] font-bold text-blue-700">
+                     <i class="fa-brands fa-google opacity-50"></i> Google連絡先
+                   </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>${tableRowsHtml}</tbody>
+          </table>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = htmlStack;
+  }
+
+  async function updateSingle(crm_id, google_id) {
+    // ボタンのイベントオブジェクトを取得
+    const btn = event.currentTarget; 
+    
+    if (!confirm('この連絡先をCRMの情報で更新しますか？')) return;
+
+    // ボタンの状態を変更
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    // アイコンを一時的にスピンさせる等の演出（任意）
+
+    try {
+      const res = await fetch('/api/google_update.php', { // ファイル名合わせました
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crm_id, google_id })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // カードを特定して消去アニメーション
+        const card = btn.closest('.group.rounded-2xl');
+        card.style.transition = 'all 0.5s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(30px)';
+        setTimeout(() => {
+          card.remove();
+          // もし「残り○件」の表示があればここで数字を減らす処理を入れる
+        }, 500);
+      } else {
+        alert('エラーが発生しました: ' + data.error);
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    } catch (e) {
+      alert('通信に失敗しました');
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+  }
+  
+  // タブイベント設定
+  document.getElementById('tab-all').addEventListener('click', () => { currentTab = 'all'; setActiveTab('tab-all'); renderDiffs(); });
+  document.getElementById('tab-crm').addEventListener('click', () => { currentTab = 'crm'; setActiveTab('tab-crm'); renderDiffs(); });
+  document.getElementById('tab-google').addEventListener('click', () => { currentTab = 'google'; setActiveTab('tab-google'); renderDiffs(); });
+  document.getElementById('btn-refresh').addEventListener('click', fetchDiff);
+
+  function setActiveTab(id) {
+    ['tab-all', 'tab-crm', 'tab-google'].forEach(tid => {
+      document.getElementById(tid).classList.remove('active-tab');
+    });
+    document.getElementById(id).classList.add('active-tab');
+  }
+
+  fetchDiff();
+</script>
+
+<style>
+  .active-tab {
+    background-color: #ffffff;
+    color: #2563eb !important;
+    border-color: #2563eb;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    z-index: 10;
+  }
+</style>

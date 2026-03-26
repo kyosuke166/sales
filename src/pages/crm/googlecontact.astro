@@ -48,10 +48,11 @@ import Layout from "../../layouts/Layout.astro";
           データの突合・クレンジング
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <button id="btn-check-diff" class="bg-white border border-gray-300 hover:bg-gray-100 px-4 py-2 rounded shadow-sm text-left">
+          <a href="/crm/googlediff" id="btn-check-diff" class="bg-white border border-gray-300 hover:bg-gray-100 px-4 py-2 rounded shadow-sm text-left block">
             <span class="block font-medium">データの差異をチェック</span>
             <span class="text-xs text-gray-500">両方にあるが名前・会社名等が違う人をリストアップ</span>
-          </button>
+          </a>
+          
           <button id="btn-check-dup" class="bg-white border border-gray-300 hover:bg-gray-100 px-4 py-2 rounded shadow-sm text-left">
             <span class="block font-medium">重複データ検知</span>
             <span class="text-xs text-gray-500">同じ電話番号が複数登録されている人をチェック</span>
@@ -60,7 +61,7 @@ import Layout from "../../layouts/Layout.astro";
       </section>
     </div>
 
-    <div id="log-container" class="mt-8 bg-black text-green-400 p-4 rounded-lg font-mono text-sm h-64 overflow-y-auto hidden">
+    <div id="log-container" class="mt-8 bg-black text-green-400 p-4 rounded-lg font-mono text-sm h-64 overflow-y-auto">
       <p>>>> 同期ログ...</p>
     </div>
   </main>
