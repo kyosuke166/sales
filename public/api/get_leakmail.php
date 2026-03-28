@@ -10,20 +10,32 @@ $company = $_GET['company'] ?? '';
 try {
     $pdo = get_db_connection();
     if (!$date || !$company) {
-        // --- パラメータがない場合は「サマリー（一覧）」を返す ---
-        $sql = "SELECT source_date, source_company, source_person, COUNT(*) as total_count 
+        // --- サマリー（一覧） ---
+        // 取得した担当者名(source_person)も1つ取得して表示に使う
+        $sql = "SELECT source_date, source_company, MAX(source_person) as source_person, COUNT(*) as total_count 
                 FROM leaked_contacts 
-                GROUP BY source_date, source_company, source_person 
-                ORDER BY source_date DESC";
+                GROUP BY source_date, source_company 
+                ORDER BY source_date ASC";
         $stmt = $pdo->query($sql);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
-        // --- パラメータがある場合は「詳細リスト」を返す ---
-        $sql = "SELECT * FROM leaked_contacts 
-                WHERE source_date = ? AND source_company = ? 
-                ORDER BY seq_number ASC";
+        // --- 詳細リスト ---
+        $sql = "SELECT 
+                    lc.*, 
+                    cp.company_name AS crm_company_name, 
+                    CONCAT(IFNULL(c.last_name,''), ' ', IFNULL(c.first_name,'')) AS crm_contact_name 
+                FROM leaked_contacts lc
+                LEFT JOIN crm_company cp ON lc.company_id = cp.id
+                LEFT JOIN crm_contact c ON lc.contact_id = c.id
+                WHERE lc.source_date = ? AND lc.source_company = ? 
+                ORDER BY lc.seq_number ASC";
+        
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$date, $company]);
+
+        // URLパラメータの 'T' をスペースに変換しないとDBと一致しません
+        $search_date = str_replace('T', ' ', $date);
+        
+        $stmt->execute([$search_date, $company]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

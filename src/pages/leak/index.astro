@@ -4,155 +4,138 @@ import Layout from '../../layouts/Layout.astro';
 
 <Layout title="漏洩リスト管理">
   <main>
+    <div class="header-container">
+      <h2>漏洩メール管理一覧</h2>
+      <div class="controls">
+        <a href="/leak/sample_leak.csv" download="sample_leak.csv" class="btn-secondary btn-download">
+          <i class="fa-solid fa-download"></i> フォーマット
+        </a>
+        <button id="btn-import-leak" class="btn-secondary btn-add-minimal">
+          <i class="fa-solid fa-upload"></i> CSV登録
+        </button>
+      </div>
+    </div>
+
     <div id="leaked-container">
       <div class="loading">読み込み中...</div>
     </div>
+
+    <div id="leak-modal" class="modal-overlay" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>漏洩メール取込み設定</h3>
+          <button id="modal-close-x" type="button">&times;</button>
+        </div>
+        <form id="leak-import-form" action="/api/import_leak.php" method="POST" enctype="multipart/form-data">
+          <div class="modal-body">
+            <div class="form-group">
+              <label>情報取得日（メール受信日時）</label>
+              <input type="datetime-local" name="source_date" step="1" required value={new Date().toISOString().slice(0, 19)}>
+            </div>
+            <div class="form-group">
+              <label>発生元の会社名</label>
+              <input type="text" name="source_company" placeholder="例：株式会社〇〇" required>
+            </div>
+            <div class="form-group">
+              <label>発生元の担当者名</label>
+              <input type="text" name="source_person" placeholder="例：山田太郎" required>
+            </div>
+            <div class="form-group">
+              <label>CSVファイルを選択</label>
+              <input type="file" name="csv_file" accept=".csv" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="btn-modal-cancel" class="btn-secondary">キャンセル</button>
+            <button type="submit" class="btn-primary">プレビューを表示</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </main>
-</Layout>
 
-<style is:global>
-  .header-container { margin: 20px 10px; padding-bottom: 10px; border-bottom: 3px solid #333; }
-  .header-container h2 { margin: 0; font-size: 1.2rem; position: relative; padding-left: 15px; line-height: 1.4; }
-  .header-container h2::before { content: ""; position: absolute; left: 0; top: 10%; height: 80%; width: 5px; background: #dc3545; border-radius: 2px; }
-  
-  .nav-bar { display: flex; justify-content: space-between; align-items: center; margin: 15px 10px 10px 10px; }
-  .back-link { font-size: 0.9rem; color: #007bff; text-decoration: none; font-weight: bold; }
-  
-  .table-wrapper { margin: 0 10px 30px 10px; border: 1px solid #333; border-radius: 8px; overflow: hidden; background: #fff; }
-  .leaked-table { width: 100%; border-collapse: collapse; }
-  .leaked-table th { background: #333; color: #fff; padding: 12px 10px; font-size: 0.85rem; text-align: left; }
-  .leaked-table td { border-bottom: 1px solid #eee; padding: 10px; font-size: 0.9rem; vertical-align: middle; }
-  
-  /* 行クリックで詳細へ */
-  .row-clickable { cursor: pointer; transition: background 0.2s; }
-  .row-clickable:hover { background: #f8f9fa; }
+  <style is:global>
+    /* 先ほどのデザインをそのまま維持 */
+    .header-container { display: flex; justify-content: space-between; align-items: center; margin: 20px 10px; padding-bottom: 10px; border-bottom: 3px solid #333; }
+    .header-container h2 { margin: 0; font-size: 1.5rem; position: relative; padding-left: 15px; }
+    .header-container h2::before { content: ""; position: absolute; left: 0; top: 15%; height: 70%; width: 5px; background: #007bff; border-radius: 2px; }
+    .controls { position: fixed; top: 60px; right: 20px; z-index: 1000; display: flex; gap: 10px; background: rgba(255, 255, 255, 0.85); padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); backdrop-filter: blur(8px); border: 1px solid rgba(0,0,0,0.05); }
+    .btn-secondary, .btn-primary { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 8px 18px; font-size: 0.85rem; font-weight: bold; cursor: pointer; border-radius: 25px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    .btn-secondary { border: 1.5px solid #007bff; background: #fff; color: #007bff; }
+    .btn-secondary:hover { background: #007bff; color: #fff; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,123,255,0.3); }
+    .btn-download { border-color: #6c757d; color: #6c757d; }
+    .btn-download:hover { border-color: #007bff; background: #007bff; color: #fff; }
+    .btn-add-minimal:hover { border-color: #28a745; color: #28a745; background: #e8f5e9; transform: scale(1.1); box-shadow: 0 4px 10px rgba(40, 167, 69, 0.2); }
+    .btn-primary { background: #007bff; color: #fff; border: 1.5px solid #007bff; }
+    .table-wrapper { margin: 0 10px 30px 10px; border: 1px solid #333; border-radius: 8px; overflow: hidden; background: #fff; }
+    .leaked-table { width: 100%; border-collapse: collapse; }
+    .leaked-table th { background: #333; color: #fff; padding: 12px 10px; font-size: 0.85rem; text-align: left; }
+    .leaked-table td { border-bottom: 1px solid #eee; padding: 10px; font-size: 0.9rem; vertical-align: middle; }
+    .row-clickable { cursor: pointer; }
+    .row-clickable:hover { background: #f8f9fa; }
+    .count-badge { background: #dc3545; color: white; padding: 2px 10px; border-radius: 15px; font-weight: bold; font-size: 0.8rem; }
+    .loading { padding: 50px; text-align: center; color: #999; }
+    /* モーダル略 */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+    .modal-content { background: #fff; border-radius: 6px; width: 480px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .modal-header { padding: 15px 20px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; }
+    .modal-header h3 { margin: 0; font-size: 1.1rem; }
+    #modal-close-x { border: none; background: none; font-size: 1.5rem; cursor: pointer; color: #666; }
+    .modal-body { padding: 20px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85rem; color: #444; }
+    .form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    .modal-footer { padding: 15px 20px; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 10px; background: #f8f9fa; }
+  </style>
 
-  .count-badge { background: #dc3545; color: white; padding: 2px 10px; border-radius: 15px; font-weight: bold; font-size: 0.8rem; }
-  
-  /* 詳細表示用のステータス */
-  .status-tag { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-  .status-linked { background: #e3f2fd; color: #1976d2; border: 1px solid #bbdefb; }
-  .status-unlinked { background: #f5f5f5; color: #888; border: 1px solid #ddd; }
-  
-  .email-text { color: #666; font-size: 0.8rem; display: block; margin-top: 2px; }
-  .loading { padding: 50px; text-align: center; color: #999; }
-</style>
+  <script is:inline>
+    const modal = document.getElementById('leak-modal');
+    const btnOpen = document.getElementById('btn-import-leak');
+    const btnCloseX = document.getElementById('modal-close-x');
+    const btnCancel = document.getElementById('btn-modal-cancel');
 
-<script>
-  async function init() {
-    const container = document.getElementById('leaked-container');
-    const urlParams = new URLSearchParams(window.location.search);
-    const sourceDate = urlParams.get('date');
-    const sourceCompany = urlParams.get('company');
+    btnOpen.onclick = () => { modal.style.display = 'flex'; };
+    const close = () => { modal.style.display = 'none'; };
+    btnCloseX.onclick = close;
+    btnCancel.onclick = close;
+    window.onclick = (e) => { if (e.target === modal) close(); };
 
-    if (sourceDate && sourceCompany) {
-      // --- 詳細表示 (子画面) ---
-      renderDetail(container, sourceDate, sourceCompany);
-    } else {
-      // --- サマリー一覧 (親画面) ---
-      renderSummary(container);
-    }
-  }
+    async function renderSummary() {
+      const container = document.getElementById('leaked-container');
+      try {
+        const response = await fetch('/api/get_leakmail.php');
+        const result = await response.json();
+        if (!result.success) throw new Error();
 
-  // 親画面：ソース単位の集計一覧
-  async function renderSummary(container) {
-    try {
-      const response = await fetch('/api/get_leakmail.php');
-      const result = await response.json();
-
-      if (!result.success) throw new Error();
-
-      container.innerHTML = `
-        <div class="nav-bar">
-          <span class="back-link">CRM管理ツール</span>
-        </div>
-        <div class="header-container">
-          <h2>情報漏洩元メール一覧（ソース別集計）</h2>
-        </div>
-        <div class="table-wrapper">
-          <table class="leaked-table">
-            <thead>
-              <tr>
-                <th style="width:180px;">取得日</th>
-                <th>発生元会社 / 担当者</th>
-                <th style="width:120px; text-align:center;">漏洩件数</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${result.data.map(s => `
-                <tr class="row-clickable" onclick="location.href='?date=${encodeURIComponent(s.source_date)}&company=${encodeURIComponent(s.source_company)}'">
-                  <td>${s.source_date.replace(/-/g, '/')}</td>
-                  <td>
-                    <strong>${s.source_company}</strong><br>
-                    <small style="color:#666;">${s.source_person}</small>
-                  </td>
-                  <td style="text-align:center;"><span class="count-badge">${Number(s.total_count).toLocaleString()} 件</span></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    } catch (e) {
-      container.innerHTML = `<p style="color:red; padding:20px;">サマリーの取得に失敗しました</p>`;
-    }
-  }
-
-  // 子画面：特定のメールに含まれる宛先一覧
-  async function renderDetail(container, date, company) {
-    try {
-      const response = await fetch(`/api/get_leakmail.php?date=${encodeURIComponent(date)}&company=${encodeURIComponent(company)}`);
-      const result = await response.json();
-
-      container.innerHTML = `
-        <div class="nav-bar">
-          <a href="/leak/" class="back-link">← ソース一覧へ戻る</a>
-        </div>
-        <div class="header-container">
-          <h2>${company} (${date}) 漏洩宛先詳細</h2>
-        </div>
-        <div class="table-wrapper">
-          <table class="leaked-table">
-            <thead>
-              <tr>
-                <th style="width:45px;">No</th>
-                <th style="width:25%;">宛先会社 / カナ</th>
-                <th style="width:20%;">氏名 / メール</th>
-                <th>CRM連携</th>
-                <th>配信宛名</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${result.data.map(d => `
+        container.innerHTML = `
+          <div class="table-wrapper">
+            <table class="leaked-table">
+              <thead>
                 <tr>
-                  <td style="text-align:center; background:#fcfcfc;">${d.seq_number}</td>
-                  <td>
-                    <strong>${d.raw_company || '---'}</strong><br>
-                    <small style="color:#999;">${d.raw_company_kana || ''}</small>
-                  </td>
-                  <td>
-                    <strong>${d.raw_person || 'ご担当者'}</strong>
-                    <span class="email-text">${d.email}</span>
-                  </td>
-                  <td>
-                    ${d.contact_id 
-                      ? `<span class="status-tag status-linked">担当者一致 (ID:${d.contact_id})</span>` 
-                      : d.company_id 
-                        ? `<span class="status-tag status-linked" style="background:#fff3e0; color:#e65100; border-color:#ffe0b2;">会社一致 (ID:${d.company_id})</span>`
-                        : `<span class="status-tag status-unlinked">未登録</span>`
-                    }
-                  </td>
-                  <td>${d.send_name || '<small style="color:#ccc;">未設定</small>'}</td>
+                  <th style="width:180px;">取得日</th>
+                  <th>発生元会社 / 担当者</th>
+                  <th style="width:120px; text-align:center;">漏洩件数</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    } catch (e) {
-      container.innerHTML = `<p style="color:red; padding:20px;">詳細データの取得に失敗しました</p>`;
+              </thead>
+              <tbody>
+                ${result.data.map(s => `
+                  <tr class="row-clickable" onclick="location.href='/leak/desc?date=${encodeURIComponent(s.source_date)}&company=${encodeURIComponent(s.source_company)}'">
+                    <td>${s.source_date.replace(/-/g, '/')}</td>
+                    <td>
+                      <strong>${s.source_company}</strong><br>
+                      <small style="color:#666;">${s.source_person}</small>
+                    </td>
+                    <td style="text-align:center;"><span class="count-badge">${Number(s.total_count).toLocaleString()} 件</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (e) {
+        container.innerHTML = `<p style="color:red; padding:20px;">データの取得に失敗しました</p>`;
+      }
     }
-  }
-
-  init();
-</script>
+    renderSummary();
+  </script>
+</Layout>

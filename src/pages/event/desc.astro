@@ -12,12 +12,32 @@ import Layout from '../../layouts/Layout.astro';
 
 <style is:global>
   /* 既存のスタイルは維持 */
-  .header-container { margin: 20px 10px; padding-bottom: 10px; border-bottom: 3px solid #333; }
-  .header-container h2 { margin: 0; font-size: 1.2rem; position: relative; padding-left: 15px; line-height: 1.4; }
-  .header-container h2::before { content: ""; position: absolute; left: 0; top: 10%; height: 80%; width: 5px; background: #28a745; border-radius: 2px; }
+  .header-container { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin: 20px 10px; 
+    padding-bottom: 10px; 
+    border-bottom: 3px solid #333; 
+  }
+  
+  .header-container h2 { 
+    margin: 0; 
+    font-size: 1.2rem; 
+    position: relative; 
+    padding-left: 15px; 
+    line-height: 1.4;
+  }
+  
+  .header-container h2::before { 
+    content: ""; 
+    position: absolute; 
+    left: 0; top: 10%; height: 80%; width: 5px; 
+    background: #28a745; 
+    border-radius: 2px; 
+  }
   .nav-bar { display: flex; justify-content: space-between; align-items: center; margin: 15px 10px 10px 10px; }
   .back-link { font-size: 0.9rem; color: #007bff; text-decoration: none; font-weight: bold; }
-  .btn-sync { padding: 8px 18px; background: #007bff; color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
   .table-wrapper { margin: 0 10px 30px 10px; border: 1px solid #333; border-radius: 8px; overflow: hidden; background: #fff; }
   .participant-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
   .participant-table th { background: #333; color: #fff; padding: 12px 10px; font-size: 0.85rem; text-align: left; }
@@ -37,6 +57,28 @@ import Layout from '../../layouts/Layout.astro';
   .btn-send { background: #fff3e0; border-color: #ff9800; color: #e65100; }
   .btn-nosend { background: #f5f5f5; color: #bbb; border-color: #ddd; }
   .loading { padding: 50px; text-align: center; color: #999; }
+
+    /* CRMと自動照合ボタン */
+  .controls-inline { display: flex; gap: 10px; }
+  .btn-sync {
+    padding: 8px 18px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .btn-sync:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,123,255,0.3);
+  }
 </style>
 
 <script>
@@ -55,15 +97,19 @@ import Layout from '../../layouts/Layout.astro';
         const e = result.event;
         const dateStr = e.event_date.split(' ')[0].replace(/-/g, '/');
         const organizer = e.organizer || 'SBT';
-        const headerText = `${dateStr} ${e.event_number} ${e.event_name} ＠ ${e.area}${e.place ? `（${e.place}）` : ''} by ${organizer}`;
+        const headerText = `${dateStr} ${e.event_number ? `${e.event_number} ` : ''}${e.event_name} ＠ ${e.area}${e.place ? `（${e.place}）` : ''} by ${organizer}`;
 
         container.innerHTML = `
           <div class="nav-bar">
             <a href="/event" class="back-link">← イベント一覧へ戻る</a>
-            <button id="btn-sync-crm" class="btn-sync">CRMと自動照合</button>
           </div>
           <div class="header-container">
             <h2>${headerText}</h2>
+            <div class="controls-inline">
+              <button id="btn-sync-crm" class="btn-sync">
+                <i class="fa-solid fa-rotate"></i> CRMと自動照合
+              </button>
+            </div>
           </div>
           <div class="table-wrapper">
             <table class="participant-table">
