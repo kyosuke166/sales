@@ -1,0 +1,183 @@
+---
+// src/pages/crm/sync.astro
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="未紐付けデータの一括照合">
+  <main class="max-w-[1200px] mx-auto p-6">
+    <div class="mb-8">
+      <h2 class="text-2xl font-bold text-slate-800">未紐付けデータの一括照合</h2>
+      <p class="text-slate-500 text-sm mt-1">CRMの担当者とメールアドレスが一致するデータを抽出しています。右側の矢印ボタンでCRMと紐付けます。</p>
+    </div>
+
+    <div id="sync-container">
+      <div class="py-20 text-center text-slate-400">
+        <i class="fa-solid fa-spinner fa-spin text-2xl mb-4"></i>
+        <p>照合データを読み込み中...</p>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  .sync-section { margin-bottom: 40px; background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
+  .sync-section h3 { font-weight: bold; color: #1e293b; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+  .sync-table { width: 100%; border-collapse: collapse; }
+  .sync-table th { background: #f8fafc; padding: 12px; text-align: left; font-size: 0.75rem; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+  .sync-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; vertical-align: middle; }
+  .count-badge { background: #f1f5f9; color: #475569; border-radius: 6px; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; }
+  .sync-table tr:hover { background-color: #fcfdff; }
+</style>
+
+<script is:inline>
+  async function loadSyncPreview() {
+    const container = document.getElementById('sync-container');
+
+    try {
+      const res = await fetch('/api/sync_contact.php', {
+        method: 'POST',
+        body: new URLSearchParams({ mode: 'preview' })
+      });
+      const result = await res.json();
+
+      if (!result.success) throw new Error(result.message);
+
+      let html = '';
+
+      // --- 交流会参加者データ ---
+      html += `<div class="sync-section">
+        <h3><i class="fa-solid fa-handshake text-emerald-500"></i> 交流会参加者データとの照合 <span class="count-badge">メール一致</span></h3>`;
+      
+      if (result.event && result.event.length > 0) {
+        html += `
+          <table class="sync-table">
+            <thead>
+              <tr>
+                <th style="width:10px;"></th>
+                <th>元データ (社名 / 氏名 / 出所)</th>
+                <th style="width:80px; text-align:center;">同期</th>
+                <th>CRM登録内容 (社名 / 氏名)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${result.event.map(d => `
+                <tr class="group/row">
+                  <td></td>
+                  <td>
+                    <div class="font-bold text-slate-700">${d.company || '(不明)'} / ${d.name || '(不明)'}</div>
+                    <div class="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      <i class="fa-regular fa-calendar-check mr-1"></i> ${d.event_date}開催：${d.event_name} (${d.area})<br>
+                      <span class="bg-slate-100 px-1 rounded text-[10px]">No.${d.entry_number}</span> ${d.email}
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <button onclick="syncSingle(event, '${d.id}', 'event')" class="group/btn p-2 outline-none">
+                      <i class="fa-solid fa-circle-arrow-right text-2xl text-gray-200 group-hover/btn:text-blue-500 group-hover/btn:scale-110 transition-all"></i>
+                    </button>
+                  </td>
+                  <td>
+                    <div class="text-indigo-600 font-bold">${d.crm_company || '(会社未登録)'}</div>
+                    <div class="font-bold">${d.crm_name} <span class="text-xs font-normal text-slate-400">(CRM ID:${d.crm_contact_id})</span></div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>`;
+      } else {
+        html += `<div class="py-10 text-center text-slate-400 text-sm italic border-t">一致する未紐付けデータはありません。</div>`;
+      }
+      html += `</div>`;
+
+      // --- 外部収集メールデータ ---
+      html += `<div class="sync-section">
+        <h3><i class="fa-solid fa-envelope-open-text text-red-400"></i> 外部収集メールデータとの照合 <span class="count-badge">メール一致</span></h3>`;
+
+      if (result.leak && result.leak.length > 0) {
+        html += `
+          <table class="sync-table">
+            <thead>
+              <tr>
+                <th style="width:10px;"></th>
+                <th>元データ (社名 / 氏名 / 出所)</th>
+                <th style="width:80px; text-align:center;">同期</th>
+                <th>CRM登録内容 (社名 / 氏名)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${result.leak.map(d => `
+                <tr class="group/row">
+                  <td></td>
+                  <td>
+                    <div class="font-bold text-slate-700">${d.company || '(不明)'} / ${d.name || '(不明)'}</div>
+                    <div class="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      <i class="fa-solid fa-file-contract mr-1"></i> 取得日：${d.source_date} / 出所：${d.source_company}<br>
+                      <span class="bg-slate-100 px-1 rounded text-[10px]">No.${d.seq_number}</span> ${d.email}
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <button onclick="syncSingle(event, '${d.id}', 'leak')" class="group/btn p-2 outline-none">
+                      <i class="fa-solid fa-circle-arrow-right text-2xl text-gray-200 group-hover/btn:text-blue-500 group-hover/btn:scale-110 transition-all"></i>
+                    </button>
+                  </td>
+                  <td>
+                    <div class="text-indigo-600 font-bold">${d.crm_company || '(会社未登録)'}</div>
+                    <div class="font-bold">${d.crm_name} <span class="text-xs font-normal text-slate-400">(CRM ID:${d.crm_contact_id})</span></div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>`;
+      } else {
+        html += `<div class="py-10 text-center text-slate-400 text-sm italic border-t">一致する未紐付けデータはありません。</div>`;
+      }
+      html += `</div>`;
+
+      container.innerHTML = html;
+
+    } catch (err) {
+      container.innerHTML = `<div class="py-10 text-center text-red-500">エラー: ${err.message}</div>`;
+    }
+  }
+
+  // 個別同期の実行
+  async function syncSingle(event, id, type) {
+    const btn = event.currentTarget;
+    if (btn.disabled) return;
+
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+
+    try {
+      const res = await fetch('/api/sync_contact.php', {
+        method: 'POST',
+        body: new URLSearchParams({ mode: 'execute_single', id: id, type: type })
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        const row = btn.closest('tr');
+        row.style.transition = 'all 0.5s ease';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(20px)';
+        setTimeout(() => {
+          row.remove();
+          // すべてのセクションでデータがなくなったらリロードして「0件画面」にする
+          if (document.querySelectorAll('.sync-table tbody tr').length === 0) {
+            location.reload();
+          }
+        }, 500);
+      } else {
+        alert('同期に失敗しました: ' + result.message);
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+    } catch (err) {
+      alert('通信エラーが発生しました。');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  }
+
+  // 初期読み込み
+  loadSyncPreview();
+</script>

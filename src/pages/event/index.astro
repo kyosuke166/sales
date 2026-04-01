@@ -341,7 +341,7 @@ import Layout from '../../layouts/Layout.astro';
   }
 </style>
 
-<script>
+<script is:inline>
   // 日付をパーツに分けてHTML化
   const getFormattedDateHtml = (dateStr) => {
     const days = ['日', '月', '火', '水', '木', '金', '土'];
@@ -349,7 +349,6 @@ import Layout from '../../layouts/Layout.astro';
     const m = d.getMonth() + 1;
     const date = d.getDate();
     const w = days[d.getDay()];
-    
     return `
       <div class="date-box">
         <span class="date-m">${m}</span>
@@ -360,47 +359,65 @@ import Layout from '../../layouts/Layout.astro';
     `;
   };
 
-  // CSVインポートを起動する関数
+  // モーダルを開く関数（HTMLのonclickから呼べるようにwindowに紐付け）
+  window.openModal = (data, mode = 'edit') => {
+    const modal = document.getElementById('event-modal');
+    const titleEl = document.getElementById('modal-title');
+    if (!modal) return;
+
+    if (mode === 'edit') {
+      titleEl.innerText = 'イベント情報を編集';
+      document.getElementById('form-id').value = data.id || '';
+      document.getElementById('form-date').value = (data.date || '').replace(' ', 'T').slice(0, 16);
+      document.getElementById('form-name').value = data.name || '';
+      document.getElementById('form-number').value = data.number || '';
+      document.getElementById('form-capacity').value = data.capacity || '';
+      document.getElementById('form-area').value = data.area || '';
+      document.getElementById('form-place').value = data.place || '';
+      document.getElementById('form-price').value = data.price || '';
+      document.getElementById('form-organizer').value = data.organizer || '';
+    } else if (mode === 'copy') {
+      titleEl.innerText = 'イベントを複製して新規登録';
+      document.getElementById('form-id').value = ''; // 新規扱い
+      document.getElementById('form-date').value = (data.date || '').replace(' ', 'T').slice(0, 16);
+      document.getElementById('form-name').value = data.name || '';
+      
+      // 回数を自動インクリメント（例: #121 -> #122）
+      const currentNum = parseInt((data.number || '').replace(/[^0-9]/g, ''));
+      document.getElementById('form-number').value = isNaN(currentNum) ? data.number : `＃${currentNum + 1}`;
+      
+      document.getElementById('form-capacity').value = data.capacity || '';
+      document.getElementById('form-area').value = data.area || '';
+      document.getElementById('form-place').value = data.place || '';
+      document.getElementById('form-price').value = data.price || '';
+      document.getElementById('form-organizer').value = data.organizer || '';
+    }
+    modal.style.display = 'flex';
+  };
+
+  // CSVインポート
   window.triggerImport = (eventId, eventName) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.csv';
-    input.name = 'csv';
-
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (!file) return;
+      const formData = new FormData();
+      formData.append('csv', file);
+      formData.append('event_id', eventId);
 
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = '/api/import_participants.php'; // ★相対パス
-      form.enctype = 'multipart/form-data';
-      form.style.display = 'none'; // 画面には出さない
-
-      const idInput = document.createElement('input');
-      idInput.type = 'hidden';
-      idInput.name = 'event_id';
-      idInput.value = eventId;
-      form.appendChild(idInput);
-
-      // input自体をフォームに移動
-      form.appendChild(input);
-
-      // 送信ボタンをダミーで作る
-      const submitBtn = document.createElement('button');
-      submitBtn.type = 'submit';
-      form.appendChild(submitBtn);
-
-      document.body.appendChild(form);
-
-      // 直接 submit() するのではなく、ボタンをクリックさせる
-      setTimeout(() => {
-        submitBtn.click(); 
-      }, 50);
+      fetch('/api/import_participants.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(result => {
+          if (result.success) { alert('インポート完了'); location.reload(); }
+          else { alert('エラー: ' + result.message); }
+        });
     };
-
     input.click();
   };
+
+  let selectedData = null; // 右クリック用保持
 
   async function loadEvents() {
     try {
@@ -409,13 +426,11 @@ import Layout from '../../layouts/Layout.astro';
       if (!result.success) return;
 
       const container = document.querySelector('#event-list');
-      if (!container) return;
-
       const now = new Date();
       const twoMonthsAgo = new Date();
       twoMonthsAgo.setMonth(now.getMonth() - 2);
 
-      // グルーピング処理
+      // グルーピング
       const grouped = {};
       result.data.forEach(e => {
         const d = new Date(e.event_date);
@@ -423,7 +438,6 @@ import Layout from '../../layouts/Layout.astro';
         const month = d.getMonth() + 1;
         if (!grouped[year]) grouped[year] = { months: {}, hasRecent: false };
         if (!grouped[year].months[month]) grouped[year].months[month] = [];
-        
         grouped[year].months[month].push(e);
         if (d >= twoMonthsAgo) grouped[year].hasRecent = true;
       });
@@ -434,176 +448,92 @@ import Layout from '../../layouts/Layout.astro';
         html += `<div class="year-section ${yearClosed}" data-node="year">
                   <h3 class="year-title" onclick="this.parentElement.classList.toggle('closed')">${year}年</h3>
                   <div class="year-content">`;
-
         for (const month in grouped[year].months) {
           const events = grouped[year].months[month];
-          const isRecentMonth = new Date(events[events.length - 1].event_date) >= twoMonthsAgo;
-          const monthClosed = isRecentMonth ? '' : 'closed';
-
+          const monthClosed = new Date(events[events.length-1].event_date) >= twoMonthsAgo ? '' : 'closed';
           html += `
-          <div class="month-section ${monthClosed}" data-node="month">
-            <h4 class="month-title" onclick="this.parentElement.classList.toggle('closed')">${month}月</h4>
-            <div class="month-content">
-              <table class="admin-table">
-                <tbody>
-                  ${events.map(e => {
-                    // キャパ設定がない場合の表示制御
-                    const capDisplay = e.capacity ? e.capacity : '-';
-                    const currentCount = e.current_count || 0;
-                    
-                    return `
-                      <tr class="event-row">
+            <div class="month-section ${monthClosed}" data-node="month">
+              <h4 class="month-title" onclick="this.parentElement.classList.toggle('closed')">${month}月</h4>
+              <div class="month-content">
+                <table class="admin-table">
+                  <tbody>
+                    ${events.map(e => `
+                      <tr class="event-row" 
+                          data-id="${e.id}" data-date="${e.event_date}" data-name="${e.event_name}" 
+                          data-number="${e.event_number || ''}" data-capacity="${e.capacity || ''}" 
+                          data-area="${e.area || ''}" data-place="${e.place || ''}" 
+                          data-price="${e.price || ''}" data-organizer="${e.organizer || ''}">
                         <td class="col-date">${getFormattedDateHtml(e.event_date)}</td>
-                        <td class="col-name" onclick="openModal(this.closest('tr').dataset, 'edit')" title="編集">
+                        <td class="col-name" onclick="window.openModal(this.closest('tr').dataset, 'edit')" style="cursor:pointer;">
                           <strong>${e.event_number || ''} ${e.event_name}</strong>
                           ${e.organizer ? `<span class="organizer-text">（${e.organizer}）</span>` : ''}
                         </td>
-                        <td class="col-area" title="${e.place || ''}">${e.area || '-'}</td>
+                        <td class="col-area">${e.area || '-'}</td>
                         <td class="col-price">${e.price ? `￥${Number(e.price).toLocaleString()}` : '-'}</td>
-
                         <td class="col-count">
-                          ${currentCount > 0 ? `
+                          ${(e.current_count || 0) > 0 ? `
                             <a href="/event/desc?id=${e.id}" class="count-link">
-                              <span class="count-num">${currentCount}</span><span class="count-sep">/</span><span class="count-cap">${capDisplay}</span>
+                              <span class="count-num">${e.current_count}</span><span class="count-sep">/</span><span class="count-cap">${e.capacity || '-'}</span>
                             </a>
-                          ` : `
-                            <span class="count-zero">0 / ${capDisplay}</span>
-                          `}
+                          ` : `<span class="count-zero">0 / ${e.capacity || '-'}</span>`}
                         </td>
-
                         <td class="col-action">
-                          <button onclick="event.stopPropagation(); triggerImport(${e.id}, '${e.event_name}')" 
-                                  class="btn-add-minimal" title="参加者をCSV登録">
+                          <button onclick="event.stopPropagation(); window.triggerImport(${e.id}, '${e.event_name}')" class="btn-add-minimal">
                             <i class="fa-solid fa-file-import"></i>
                           </button>
                         </td>
                       </tr>
-                      `;
-                    }).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          `;
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>`;
         }
         html += `</div></div>`;
       }
       container.innerHTML = html;
 
-      let selectedData = null; // 右クリックで選択された行のデータ保持用
-
-      const modal = document.getElementById('event-modal');
-      const form = document.getElementById('event-form');
+      // 右クリック制御
       const contextMenu = document.getElementById('context-menu');
-
-      // モーダルを開く関数
-      function openModal(data = null, mode = 'edit') {
-        const titleEl = document.getElementById('modal-title');
-        
-        if (mode === 'edit') {
-          titleEl.innerText = 'イベント情報を編集';
-          document.getElementById('form-id').value = data.id;
-          document.getElementById('form-date').value = data.date.replace(' ', 'T').slice(0, 16);
-          document.getElementById('form-name').value = data.name;
-          document.getElementById('form-number').value = data.number;
-          document.getElementById('form-capacity').value = data.capacity;
-          document.getElementById('form-area').value = data.area;
-          document.getElementById('form-place').value = data.place;
-          document.getElementById('form-price').value = data.price;
-          document.getElementById('form-organizer').value = data.organizer;
-        } else if (mode === 'copy') {
-          titleEl.innerText = 'イベントを複製して新規登録';
-          document.getElementById('form-id').value = ''; // IDを空にして新規扱いにする
-          document.getElementById('form-date').value = data.date.replace(' ', 'T').slice(0, 16);
-          document.getElementById('form-name').value = data.name;
-          // 回数は数値なら+1してあげる（例: #121 -> 122）
-          const nextNum = parseInt(data.number.replace(/[^0-9]/g, '')) + 1;
-          document.getElementById('form-number').value = isNaN(nextNum) ? data.number : `＃${nextNum}`;
-          document.getElementById('form-capacity').value = data.capacity;
-          document.getElementById('form-area').value = data.area;
-          document.getElementById('form-place').value = data.place;
-          document.getElementById('form-organizer').value = data.organizer;
-        }
-        modal.style.display = 'flex';
-      }
-
-      // 右クリックイベントの設定
       container.oncontextmenu = (e) => {
         const row = e.target.closest('.event-row');
         if (!row) return;
         e.preventDefault();
-        selectedData = row.dataset; // 行のdata属性を取得
+        selectedData = row.dataset;
         contextMenu.style.top = `${e.pageY}px`;
         contextMenu.style.left = `${e.pageX}px`;
         contextMenu.style.display = 'block';
       };
 
-      // 左クリックイベントの設定
-      container.onclick = (e) => {
-        // .col-name（名前の列）の中をクリックした時に編集モーダルへ
-        const nameCell = e.target.closest('.col-name');
-        if (nameCell) {
-          const row = nameCell.closest('.event-row');
-          openModal(row.dataset, 'edit');
-          return;
-        }
-      };
-
-      // メニュー外クリックで閉じる
-      document.addEventListener('click', () => {
-        contextMenu.style.display = 'none';
-      });
-
-      // 複製ボタンの挙動
+      document.addEventListener('click', () => { contextMenu.style.display = 'none'; });
       document.getElementById('menu-copy').onclick = () => {
-        if (selectedData) openModal(selectedData, 'copy');
+        if (selectedData) window.openModal(selectedData, 'copy');
       };
 
-      // モーダル閉じる
-      document.getElementById('modal-close').onclick = () => modal.style.display = 'none';
-      document.getElementById('btn-cancel').onclick = () => modal.style.display = 'none';
-
-      // --- 保存処理 (API送信) ---
-      form.onsubmit = async (e) => {
-        e.preventDefault();
-        const formData = new FormData(form);
-        const payload = Object.fromEntries(formData.entries());
-
-        try {
-          const res = await fetch('/api/save_events.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const result = await res.json();
-          if (result.success) {
-            alert('保存しました');
-            location.reload(); // 簡易的にリロードして反映
-          } else {
-            alert('エラー: ' + result.message);
-          }
-        } catch (err) {
-          alert('通信エラーが発生しました');
-        }
-      };
-
-      // 4. 一番下までスクロール
-      //setTimeout(() => {
-      //  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-      //}, 100);
-
-      // 全開・全閉制御
-      document.getElementById('btn-expand-all').onclick = () => {
-        document.querySelectorAll('[data-node]').forEach(el => el.classList.remove('closed'));
-      };
-      document.getElementById('btn-collapse-all').onclick = () => {
-        document.querySelectorAll('[data-node]').forEach(el => el.classList.add('closed'));
-      };
-
-    } catch (e) {
-      console.error("読み込み失敗", e);
-    }
+    } catch (e) { console.error("読み込み失敗", e); }
   }
+
+  // 保存処理
+  document.getElementById('event-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(e.target));
+    const res = await fetch('/api/save_events.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    if (result.success) { alert('保存しました'); location.reload(); }
+    else { alert('エラー: ' + result.message); }
+  };
+
+  // モーダル閉じる
+  document.getElementById('modal-close').onclick = () => document.getElementById('event-modal').style.display = 'none';
+  document.getElementById('btn-cancel').onclick = () => document.getElementById('event-modal').style.display = 'none';
+
+  // 全開・全閉
+  document.getElementById('btn-expand-all').onclick = () => document.querySelectorAll('[data-node]').forEach(el => el.classList.remove('closed'));
+  document.getElementById('btn-collapse-all').onclick = () => document.querySelectorAll('[data-node]').forEach(el => el.classList.add('closed'));
 
   loadEvents();
 </script>
