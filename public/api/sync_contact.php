@@ -74,7 +74,7 @@ if ($mode === 'execute_single') {
         $pdo = get_db_connection();
         
         if ($type === 'event') {
-            $sql = "UPDATE event_participants ep 
+            $sql = "UPDATE events_participant ep 
                     JOIN crm_contact c ON ep.email = c.email 
                     SET ep.contact_id = c.id, ep.company_id = c.company_id 
                     WHERE ep.id = ? AND ep.contact_id IS NULL";

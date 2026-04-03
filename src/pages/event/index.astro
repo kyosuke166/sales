@@ -400,19 +400,31 @@ import Layout from '../../layouts/Layout.astro';
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.csv';
+    input.name = 'csv';
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const formData = new FormData();
-      formData.append('csv', file);
-      formData.append('event_id', eventId);
 
-      fetch('/api/import_participants.php', { method: 'POST', body: formData })
-        .then(res => res.json())
-        .then(result => {
-          if (result.success) { alert('インポート完了'); location.reload(); }
-          else { alert('エラー: ' + result.message); }
-        });
+      // 1. 一時的なフォームを作成
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/api/import_participants.php';
+      form.enctype = 'multipart/form-data';
+      form.style.display = 'none';
+
+      // 2. event_id を追加
+      const eventIdInput = document.createElement('input');
+      eventIdInput.type = 'hidden';
+      eventIdInput.name = 'event_id';
+      eventIdInput.value = eventId;
+
+      // 3. 選択されたファイルをフォームに入れる
+      // そのまま input を append することでファイル保持
+      form.appendChild(input);
+      form.appendChild(eventIdInput);
+
+      document.body.appendChild(form);
+      form.submit();
     };
     input.click();
   };
