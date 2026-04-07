@@ -1,0 +1,131 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="案件・契約管理">
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-800">案件・契約管理</h1>
+      <a href="/projects/new" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors">
+        + 新規案件登録
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
+      <div class="bg-white p-4 rounded-lg shadow border-t-4 border-blue-500">
+        <h2 class="text-xs font-bold text-gray-500 uppercase">請求書を送る (Out)</h2>
+        <p class="text-xl font-bold text-blue-600"><span id="count-send-invoice">--</span> <span class="text-sm text-gray-400">件</span></p>
+        <p class="text-xs text-gray-400 mt-1">file_path IS NULL</p>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow border-t-4 border-blue-300">
+        <h2 class="text-xs font-bold text-gray-500 uppercase">入金を確認する (In)</h2>
+        <p class="text-xl font-bold text-blue-400"><span id="count-confirm-deposit">--</span> <span class="text-sm text-gray-400">件</span></p>
+        <p class="text-xs text-gray-400 mt-1">deposit_flg IS FALSE</p>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow border-t-4 border-red-400">
+        <h2 class="text-xs font-bold text-gray-500 uppercase">請求書を貰う (In)</h2>
+        <p class="text-xl font-bold text-red-500"><span id="count-receive-invoice">--</span> <span class="text-sm text-gray-400">件</span></p>
+        <p class="text-xs text-gray-400 mt-1">file_path IS NULL</p>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow border-t-4 border-red-300">
+        <h2 class="text-xs font-bold text-gray-500 uppercase">お金を払う (Out)</h2>
+        <p class="text-xl font-bold text-red-400"><span id="count-make-payment">--</span> <span class="text-sm text-gray-400">件</span></p>
+        <p class="text-xs text-gray-400 mt-1">paid_flg IS FALSE</p>
+      </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">案件名 / 上位会社</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">要員</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">期間</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">単価</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ステータス</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody id="project-list" class="bg-white divide-y divide-gray-200">
+          <tr>
+            <td colspan="6" class="px-6 py-10 text-center text-gray-400 italic">データを読み込み中...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</Layout>
+
+<script is:inline>
+  async function loadProjects() {
+    const listEl = document.getElementById('project-list');
+    
+    try {
+      const res = await fetch('/api/get_projects.php');
+      const data = await res.json();
+
+      if (data.status === 'success') {
+        // カウントの更新
+        document.getElementById('count-send-invoice').textContent = data.counts.send_invoice;
+        document.getElementById('count-confirm-deposit').textContent = data.counts.confirm_deposit;
+        document.getElementById('count-receive-invoice').textContent = data.counts.receive_invoice;
+        document.getElementById('count-make-payment').textContent = data.counts.make_payment;
+
+        listEl.innerHTML = ''; // クリア
+
+        if (!data.projects || data.projects.length === 0) {
+          const emptyRow = document.createElement('tr');
+          emptyRow.innerHTML = '<td colspan="6" class="px-6 py-10 text-center text-gray-400">登録された案件はありません。</td>';
+          listEl.appendChild(emptyRow);
+          return;
+        }
+
+        // セキュリティエラーを避けるため、1行ずつ要素を生成して追加
+        data.projects.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-gray-50 transition-colors border-b border-gray-100';
+          
+          // 単価のフォーマット
+          const amountStr = p.amount ? `¥${Number(p.amount).toLocaleString()}` : '---';
+          // 日付のフォーマット
+          const dateStr = (p.start_date || '').replace(/-/g, '/') + ' 〜 ' + (p.end_date || '').replace(/-/g, '/');
+
+          tr.innerHTML = `
+            <td class="px-6 py-4">
+              <div class="text-sm font-bold text-gray-900">${escapeHtml(p.project_name)}</div>
+              <div class="text-xs text-gray-500">${escapeHtml(p.company_name || '---')}</div>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(p.worker_name || '---')}</td>
+            <td class="px-6 py-4 text-xs text-gray-500">
+              <div>${dateStr}</div>
+              <div class="text-[10px] text-slate-400 mt-1">${escapeHtml(p.payment_site || '')}</div>
+            </td>
+            <td class="px-6 py-4 text-sm font-mono text-gray-700">${amountStr}</td>
+            <td class="px-6 py-4">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${p.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                ${p.status}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-right text-sm font-medium">
+              <a href="/projects/edit?id=${p.id}" class="text-blue-600 hover:text-blue-900 mr-3">編集</a>
+              <a href="/projects/detail?id=${p.id}" class="text-gray-600 hover:text-gray-900">詳細</a>
+            </td>
+          `;
+          listEl.appendChild(tr);
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load projects:", e);
+      listEl.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-red-500">読み込みエラーが発生しました。コンソールを確認してください。</td></tr>';
+    }
+  }
+
+  // XSS対策用のエスケープ関数
+  function escapeHtml(str) {
+    if (!str) return '';
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return str.replace(/[&<>"']/g, m => map[m]);
+  }
+
+  loadProjects();
+</script>

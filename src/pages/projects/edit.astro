@@ -1,0 +1,235 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="案件編集">
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-800">案件の編集</h1>
+      <a href="/projects" class="text-slate-500 hover:text-slate-700 font-bold text-sm">← 戻る</a>
+    </div>
+
+    <form id="project-form" class="form-card opacity-50 pointer-events-none" enctype="multipart/form-data">
+      <input type="hidden" name="id" id="field-id">
+      
+      <div class="mb-10">
+        <h2 class="form-section-title">案件基本情報</h2>
+        <div class="grid grid-cols-1 gap-6">
+          <div>
+            <label class="field-label">案件名</label>
+            <input type="text" name="project_name" id="field-project_name" class="input-base" required>
+          </div>
+          <div>
+            <label class="field-label">備考</label>
+            <textarea name="memo" id="field-memo" rows="2" class="input-base"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-10">
+        <h2 class="form-section-title">受注内容</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="relative">
+            <label class="field-label">上位会社</label>
+            <input type="text" id="extractSearchInput" class="input-base" placeholder="会社名を検索..." autocomplete="off">
+            <input type="hidden" name="company_id" id="target-company-id" required>
+            <div id="extractResultList" class="search-dropdown hidden"></div>
+            
+            <div id="selectedDisplay" class="hidden">
+              <div class="selected-badge">
+                <span id="selected-company-name" class="font-bold text-blue-600"></span>
+                <button type="button" id="btn-reset-selection" class="text-red-500 text-xs font-bold hover:underline ml-2">解除</button>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <label class="field-label">先方担当者</label>
+            <select name="contact_id" id="contact-select" class="input-base">
+              <option value="">選択してください</option>
+            </select>
+          </div>
+
+          <div><label class="field-label">要員名</label><input type="text" name="worker_name" id="field-worker_name" class="input-base" required></div>
+          <div><label class="field-label">注文番号</label><input type="text" name="order_number" id="field-order_number" class="input-base"></div>
+          <div><label class="field-label">開始日</label><input type="date" name="start_date" id="field-start_date" class="input-base" required></div>
+          <div><label class="field-label">終了日</label><input type="date" name="end_date" id="field-end_date" class="input-base" required></div>
+          <div><label class="field-label">月額単価</label><input type="number" name="amount" id="field-amount" class="input-base" required></div>
+          <div><label class="field-label">精算幅</label><input type="text" name="time_range" id="field-time_range" class="input-base" placeholder="140-180"></div>
+          <div><label class="field-label">支払サイト</label><input type="text" name="payment_site" id="field-payment_site" class="input-base" placeholder="例：月末締め翌月末"></div>
+          
+          <div class="md:col-span-2">
+            <label class="field-label text-blue-600">注文書PDF</label>
+            <div class="flex flex-col gap-2">
+                <input type="file" name="order_file" accept=".pdf" class="input-base">
+                
+                <div id="file-status-container" class="flex items-center gap-2 px-1">
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-6 border-t">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-12 rounded-lg shadow-lg">
+          変更を保存する
+        </button>
+      </div>
+    </form>
+  </div>
+</Layout>
+
+<style>
+  .form-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 2rem; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); }
+  .form-section-title { font-size: 1.1rem; font-weight: bold; border-left: 4px solid #3b82f6; padding-left: 1rem; margin-bottom: 1.5rem; color: #1e293b; }
+  .field-label { font-size: 0.875rem; font-weight: 600; color: #64748b; margin-bottom: 0.5rem; display: block; }
+  .input-base { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.95rem; background-color: #fcfcfd; }
+  .search-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 250px; overflow-y: auto; background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-top: 0.25rem; }
+  .search-btn-item { width: 100%; text-align: left; padding: 0.75rem 1rem; font-size: 0.875rem; border: none; border-bottom: 1px solid #f1f5f9; background: white; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .selected-badge { display: flex; align-items: center; justify-content: space-between; background: #f1f5f9; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; margin-top: 0.5rem; }
+  .hidden { display: none; }
+</style>
+
+<script is:inline>
+  (function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('id');
+    const form = document.getElementById('project-form');
+    const contactSelect = document.getElementById('contact-select');
+    const searchInput = document.getElementById('extractSearchInput');
+    const resultList = document.getElementById('extractResultList');
+    const targetCompanyIdInput = document.getElementById('target-company-id');
+    const selectedDisplayName = document.getElementById('selected-company-name');
+    const selectedDisplayContainer = document.getElementById('selectedDisplay');
+    const resetBtn = document.getElementById('btn-reset-selection');
+
+    // 共通の会社選択時処理
+    function setCompany(id, name) {
+      targetCompanyIdInput.value = id;
+      selectedDisplayName.textContent = name; // textContentなら ' があっても安全
+      selectedDisplayContainer.classList.remove('hidden');
+      searchInput.classList.add('hidden');
+      resultList.classList.add('hidden');
+    }
+
+    // 解除ボタン
+    window.resetSelection = () => {
+      targetCompanyIdInput.value = '';
+      selectedDisplayName.textContent = '';
+      selectedDisplayContainer.classList.add('hidden');
+      searchInput.classList.remove('hidden');
+      searchInput.value = '';
+      contactSelect.innerHTML = '<option value="">選択してください</option>';
+    };
+    resetBtn.onclick = window.resetSelection;
+
+    async function loadDetail() {
+      if (!projectId) return;
+      try {
+        const res = await fetch(`/api/get_projects.php?id=${projectId}`);
+        const result = await res.json();
+        if (result.status === 'success') {
+          const p = result.data;
+          document.getElementById('field-id').value = p.id;
+          document.getElementById('field-project_name').value = p.project_name || '';
+          document.getElementById('field-memo').value = p.memo || '';
+          document.getElementById('field-worker_name').value = p.worker_name || '';
+          document.getElementById('field-order_number').value = p.order_number || '';
+          document.getElementById('field-start_date').value = p.start_date || '';
+          document.getElementById('field-end_date').value = p.end_date || '';
+          document.getElementById('field-amount').value = p.amount || '';
+          document.getElementById('field-time_range').value = p.time_range || '';
+          document.getElementById('field-payment_site').value = p.payment_site || '';
+
+          if (p.company_id) {
+            setCompany(p.company_id, p.company_name);
+            
+            // 担当者リストの初期読み込み
+            const cRes = await fetch(`/api/get_contacts.php?q=${encodeURIComponent(p.company_name)}`);
+            const cResult = await cRes.json();
+            if (cResult.status === 'success') {
+              contactSelect.innerHTML = '<option value="">選択してください</option>';
+              cResult.data.filter(d => d.crm_company_id == p.company_id).forEach(c => {
+                const opt = new Option(`${c.crm_contact_last_name} ${c.crm_contact_first_name}`, c.crm_contact_id);
+                if (c.crm_contact_id == p.contact_id) opt.selected = true;
+                contactSelect.appendChild(opt);
+              });
+            }
+          }
+
+          // --- 【追加】PDFステータスの表示更新 ---
+          const statusContainer = document.getElementById('file-status-container');
+          if (p.file_path) {
+              statusContainer.innerHTML = `
+              <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">
+                  <i class="fa-solid fa-circle-check mr-1"></i>
+                  格納済（更新する場合のみ選択してください）
+              </span>
+              <a href="/${p.file_path}" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center">
+                  <i class="fa-solid fa-arrow-up-right-from-square text-[10px] mr-1"></i>現在のファイルを確認
+              </a>
+              `;
+          } else {
+              statusContainer.innerHTML = `
+              <span class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-200">
+                  <i class="fa-solid fa-circle-xmark mr-1"></i>
+                  まだ格納されていません
+              </span>
+              `;
+          }
+        
+          form.classList.remove('opacity-50', 'pointer-events-none');
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    searchInput.addEventListener('input', async (e) => {
+      const keyword = e.target.value.trim();
+      if (keyword.length < 2) { resultList.classList.add('hidden'); return; }
+      try {
+        const res = await fetch(`/api/get_contacts.php?q=${encodeURIComponent(keyword)}&limit=50`);
+        const result = await res.json();
+        resultList.innerHTML = '';
+        if (result.status === 'success' && result.data) {
+          resultList.classList.remove('hidden');
+          const seen = new Set();
+          result.data.forEach(item => {
+            const cId = item.crm_company_id;
+            const cName = item.crm_company_company_name;
+            if (cId && !seen.has(cId)) {
+              const btn = document.createElement('button');
+              btn.type = 'button'; btn.className = 'search-btn-item';
+              btn.innerHTML = `<span></span><i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>`;
+              btn.querySelector('span').textContent = cName; // 安全に代入
+              
+              btn.onclick = () => {
+                setCompany(cId, cName);
+                // 担当者絞り込み
+                const companyContacts = result.data.filter(d => d.crm_company_id == cId && d.crm_contact_id);
+                contactSelect.innerHTML = '<option value="">選択してください</option>';
+                companyContacts.forEach(c => {
+                  contactSelect.appendChild(new Option(`${c.crm_contact_last_name} ${c.crm_contact_first_name}`, c.crm_contact_id));
+                });
+              };
+              resultList.appendChild(btn);
+              seen.add(cId);
+            }
+          });
+        }
+      } catch (e) {}
+    });
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      try {
+        const res = await fetch('/api/save_project.php', { method: 'POST', body: formData });
+        const result = await res.json();
+        if (result.status === 'success') location.href = '/projects';
+        else alert('更新エラー: ' + result.message);
+      } catch (err) { alert('通信に失敗しました。'); }
+    };
+
+    loadDetail();
+  })();
+</script>
