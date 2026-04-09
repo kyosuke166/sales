@@ -10,6 +10,7 @@ try {
     // 空文字の場合は NULL に変換
     $capacity = ($input['capacity'] === '') ? null : $input['capacity'];
     $event_number = ($input['event_number'] === '') ? null : $input['event_number'];
+    $price = ($input['price'] === '') ? null : $input['price'];
 
     // IDがある場合は更新、ない場合は新規
     if (!empty($input['id'])) {
@@ -31,7 +32,7 @@ try {
             $event_number, 
             $input['area'], 
             $input['place'], 
-            $input['price'], 
+            $price, 
             $capacity, 
             $input['organizer'], 
             $input['id']
@@ -47,7 +48,7 @@ try {
             $event_number,
             $input['area'], 
             $input['place'], 
-            $input['price'], 
+            $price, 
             $capacity, 
             $input['organizer']
         ]);

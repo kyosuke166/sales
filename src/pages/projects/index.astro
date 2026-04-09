@@ -64,63 +64,67 @@ import Layout from '../../layouts/Layout.astro';
       const res = await fetch('/api/get_projects.php');
       const data = await res.json();
 
+      // PHP側が { status: 'success', projects: [...] } で返していることを前提
       if (data.status === 'success') {
-        // カウントの更新
-        document.getElementById('count-send-invoice').textContent = data.counts.send_invoice;
-        document.getElementById('count-confirm-deposit').textContent = data.counts.confirm_deposit;
-        document.getElementById('count-receive-invoice').textContent = data.counts.receive_invoice;
-        document.getElementById('count-make-payment').textContent = data.counts.make_payment;
+        // カウントの更新（countsがない場合のエラー防止）
+        if (data.counts) {
+          document.getElementById('count-send-invoice').textContent = data.counts.send_invoice || 0;
+          document.getElementById('count-confirm-deposit').textContent = data.counts.confirm_deposit || 0;
+          document.getElementById('count-receive-invoice').textContent = data.counts.receive_invoice || 0;
+          document.getElementById('count-make-payment').textContent = data.counts.make_payment || 0;
+        }
 
         listEl.innerHTML = ''; // クリア
 
-        if (!data.projects || data.projects.length === 0) {
-          const emptyRow = document.createElement('tr');
-          emptyRow.innerHTML = '<td colspan="6" class="px-6 py-10 text-center text-gray-400">登録された案件はありません。</td>';
-          listEl.appendChild(emptyRow);
+        // プロジェクトリストの取得（data.projects または data.data）
+        const projects = data.projects || data.data;
+
+        if (!projects || projects.length === 0) {
+          listEl.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-gray-400">登録された案件はありません。</td></tr>';
           return;
         }
 
-        // セキュリティエラーを避けるため、1行ずつ要素を生成して追加
-        data.projects.forEach(p => {
+        projects.forEach(p => {
           const tr = document.createElement('tr');
           tr.className = 'hover:bg-gray-50 transition-colors border-b border-gray-100';
           
-          // 単価のフォーマット
+          // PHP側で oi.amount, oi.start_date としているので、そのまま p.amount で取れます
           const amountStr = p.amount ? `¥${Number(p.amount).toLocaleString()}` : '---';
-          // 日付のフォーマット
-          const dateStr = (p.start_date || '').replace(/-/g, '/') + ' 〜 ' + (p.end_date || '').replace(/-/g, '/');
+          
+          // 日付処理（replaceAllが失敗しないようにガード）
+          const start = (p.start_date || '').replaceAll('-', '/');
+          const end = (p.end_date || '').replaceAll('-', '/');
+          const dateStr = (start || end) ? `${start || '--'} 〜 ${end || '--'}` : '---';
 
           tr.innerHTML = `
-            <td class="px-6 py-4">
-              <div class="text-sm font-bold text-gray-900">${escapeHtml(p.project_name)}</div>
-              <div class="text-xs text-gray-500">${escapeHtml(p.company_name || '---')}</div>
-            </td>
-            <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(p.worker_name || '---')}</td>
-            <td class="px-6 py-4 text-xs text-gray-500">
-              <div>${dateStr}</div>
-              <div class="text-[10px] text-slate-400 mt-1">${escapeHtml(p.payment_site || '')}</div>
-            </td>
-            <td class="px-6 py-4 text-sm font-mono text-gray-700">${amountStr}</td>
-            <td class="px-6 py-4">
-              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${p.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
-                ${p.status}
-              </span>
-            </td>
-            <td class="px-6 py-4 text-right text-sm font-medium">
-              <a href="/projects/edit?id=${p.id}" class="text-blue-600 hover:text-blue-900 mr-3">編集</a>
-              <a href="/projects/detail?id=${p.id}" class="text-gray-600 hover:text-gray-900">詳細</a>
-            </td>
+              <td class="px-6 py-4">
+                  <div class="text-sm font-bold text-gray-900">${escapeHtml(p.project_name)}</div>
+                  <div class="text-xs text-gray-500">${escapeHtml(p.company_name || '---')}</div>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(p.worker_name || '---')}</td>
+              <td class="px-6 py-4 text-xs text-gray-500">
+                  <div>${dateStr}</div>
+                  <div class="text-[10px] text-slate-400 mt-1">${escapeHtml(p.payment_site || '')}</div>
+              </td>
+              <td class="px-6 py-4 text-sm font-mono text-gray-700">${amountStr}</td>
+              <td class="px-6 py-4">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${p.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                  ${p.status}
+                  </span>
+              </td>
+              <td class="px-6 py-4 text-right text-sm font-medium">
+                  <a href="/projects/detail?id=${p.id}" class="text-blue-600 hover:text-blue-900 font-bold">詳細</a>
+              </td>
           `;
           listEl.appendChild(tr);
         });
       }
     } catch (e) {
       console.error("Failed to load projects:", e);
-      listEl.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-red-500">読み込みエラーが発生しました。コンソールを確認してください。</td></tr>';
+      listEl.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-red-500">読み込みエラーが発生しました。</td></tr>';
     }
   }
 
-  // XSS対策用のエスケープ関数
   function escapeHtml(str) {
     if (!str) return '';
     const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };

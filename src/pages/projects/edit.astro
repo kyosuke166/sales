@@ -6,7 +6,7 @@ import Layout from '../../layouts/Layout.astro';
   <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-8">
       <h1 class="text-3xl font-bold text-gray-800">案件の編集</h1>
-      <a href="/projects" class="text-slate-500 hover:text-slate-700 font-bold text-sm">← 戻る</a>
+      <a id="back-to-detail" href="#" class="text-slate-500 hover:text-slate-700 font-bold text-sm">← 詳細画面へ戻る</a>
     </div>
 
     <form id="project-form" class="form-card opacity-50 pointer-events-none" enctype="multipart/form-data">
@@ -84,8 +84,42 @@ import Layout from '../../layouts/Layout.astro';
   .form-section-title { font-size: 1.1rem; font-weight: bold; border-left: 4px solid #3b82f6; padding-left: 1rem; margin-bottom: 1.5rem; color: #1e293b; }
   .field-label { font-size: 0.875rem; font-weight: 600; color: #64748b; margin-bottom: 0.5rem; display: block; }
   .input-base { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.95rem; background-color: #fcfcfd; }
-  .search-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 250px; overflow-y: auto; background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-top: 0.25rem; }
-  .search-btn-item { width: 100%; text-align: left; padding: 0.75rem 1rem; font-size: 0.875rem; border: none; border-bottom: 1px solid #f1f5f9; background: white; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  
+  .search-dropdown { 
+    position: absolute; 
+    top: 100%; 
+    left: 0; 
+    right: 0; 
+    z-index: 100; 
+    max-height: 250px; 
+    overflow-y: auto; 
+    background: white; 
+    border: 1px solid #e2e8f0; 
+    border-radius: 0.5rem; 
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); 
+    margin-top: 0.25rem;
+    /* blockに戻してwidth: 100%を親に従わせる */
+    display: block; 
+  }
+
+  .search-btn-item { 
+    width: 100%;
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 0.75rem 1rem; 
+    font-size: 0.875rem; 
+    border: none; 
+    border-bottom: 1px solid #f1f5f9; 
+    background: white; 
+    cursor: pointer;
+    text-align: left;
+    /* --- ここが重要：改行を禁止し、はみ出しを隠す --- */
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
   .selected-badge { display: flex; align-items: center; justify-content: space-between; background: #f1f5f9; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; margin-top: 0.5rem; }
   .hidden { display: none; }
 </style>
@@ -94,6 +128,11 @@ import Layout from '../../layouts/Layout.astro';
   (function() {
     const urlParams = new URLSearchParams(window.location.search);
     const projectId = urlParams.get('id');
+    
+    if (projectId) {
+      document.getElementById('back-to-detail').href = `/projects/detail?id=${projectId}`;
+    }
+
     const form = document.getElementById('project-form');
     const contactSelect = document.getElementById('contact-select');
     const searchInput = document.getElementById('extractSearchInput');
@@ -103,16 +142,16 @@ import Layout from '../../layouts/Layout.astro';
     const selectedDisplayContainer = document.getElementById('selectedDisplay');
     const resetBtn = document.getElementById('btn-reset-selection');
 
-    // 共通の会社選択時処理
+    // 会社バッジを表示する関数
     function setCompany(id, name) {
       targetCompanyIdInput.value = id;
-      selectedDisplayName.textContent = name; // textContentなら ' があっても安全
+      selectedDisplayName.textContent = name;
       selectedDisplayContainer.classList.remove('hidden');
       searchInput.classList.add('hidden');
       resultList.classList.add('hidden');
     }
 
-    // 解除ボタン
+    // 選択を解除する関数
     window.resetSelection = () => {
       targetCompanyIdInput.value = '';
       selectedDisplayName.textContent = '';
@@ -123,13 +162,48 @@ import Layout from '../../layouts/Layout.astro';
     };
     resetBtn.onclick = window.resetSelection;
 
+    // 担当者リストを更新する関数
+    async function updateContactList(companyId, companyName, selectedContactId = null) {
+      if (!companyId) return;
+      try {
+        const res = await fetch(`/api/get_contacts.php?q=${encodeURIComponent(companyName)}`);
+        const result = await res.json();
+        
+        if (result.status === 'success' && result.data) {
+          contactSelect.innerHTML = '<option value="">選択してください</option>';
+          
+          const companyContacts = result.data.filter(d => 
+            d.crm_company_id == companyId && d.crm_contact_id !== null
+          );
+          
+          companyContacts.forEach(c => {
+            const lastName = (c.crm_contact_last_name && String(c.crm_contact_last_name) !== 'null') ? c.crm_contact_last_name : '';
+            const firstName = (c.crm_contact_first_name && String(c.crm_contact_first_name) !== 'null') ? c.crm_contact_first_name : '';
+            const fullName = `${lastName} ${firstName}`.trim();
+            
+            const opt = new Option(fullName || '名称未設定', c.crm_contact_id);
+            if (selectedContactId && c.crm_contact_id == selectedContactId) {
+              opt.selected = true;
+            }
+            contactSelect.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.error("担当者リスト更新エラー:", e);
+      }
+    }
+
+    // データを読み込んでフォームを埋める関数
     async function loadDetail() {
       if (!projectId) return;
       try {
         const res = await fetch(`/api/get_projects.php?id=${projectId}`);
         const result = await res.json();
-        if (result.status === 'success') {
+        
+        if (result.status === 'success' && result.data) {
           const p = result.data;
+          
+          // --- 基本データの流し込み ---
           document.getElementById('field-id').value = p.id;
           document.getElementById('field-project_name').value = p.project_name || '';
           document.getElementById('field-memo').value = p.memo || '';
@@ -141,48 +215,45 @@ import Layout from '../../layouts/Layout.astro';
           document.getElementById('field-time_range').value = p.time_range || '';
           document.getElementById('field-payment_site').value = p.payment_site || '';
 
-          if (p.company_id) {
-            setCompany(p.company_id, p.company_name);
-            
-            // 担当者リストの初期読み込み
-            const cRes = await fetch(`/api/get_contacts.php?q=${encodeURIComponent(p.company_name)}`);
-            const cResult = await cRes.json();
-            if (cResult.status === 'success') {
-              contactSelect.innerHTML = '<option value="">選択してください</option>';
-              cResult.data.filter(d => d.crm_company_id == p.company_id).forEach(c => {
-                const opt = new Option(`${c.crm_contact_last_name} ${c.crm_contact_first_name}`, c.crm_contact_id);
-                if (c.crm_contact_id == p.contact_id) opt.selected = true;
-                contactSelect.appendChild(opt);
-              });
+          // --- PDFファイルの状態判定 ---
+          const fileStatusContainer = document.getElementById('file-status-container');
+          if (fileStatusContainer) {
+            if (p.file_path) {
+              // ファイルがある場合
+              fileStatusContainer.innerHTML = `
+                <span class=\"text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold\">
+                  <i class=\"fa-solid fa-check\"></i> 登録済み
+                </span>
+                <span class=\"text-[10px] text-slate-400\">${p.file_path.split('/').pop()}</span>
+              `;
+            } else {
+              // ファイルがない場合
+              fileStatusContainer.innerHTML = `
+                <span class=\"text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold\">未登録</span>
+              `;
             }
           }
 
-          // --- 【追加】PDFステータスの表示更新 ---
-          const statusContainer = document.getElementById('file-status-container');
-          if (p.file_path) {
-              statusContainer.innerHTML = `
-              <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">
-                  <i class="fa-solid fa-circle-check mr-1"></i>
-                  格納済（更新する場合のみ選択してください）
-              </span>
-              <a href="/${p.file_path}" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center">
-                  <i class="fa-solid fa-arrow-up-right-from-square text-[10px] mr-1"></i>現在のファイルを確認
-              </a>
-              `;
-          } else {
-              statusContainer.innerHTML = `
-              <span class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-200">
-                  <i class="fa-solid fa-circle-xmark mr-1"></i>
-                  まだ格納されていません
-              </span>
-              `;
+          // --- 会社・担当者の復元 ---
+          const savedCompanyId = p.company_id;
+          const savedCompanyName = p.company_name;
+          const savedContactId = p.in_contact_id; // 534
+
+          if (savedCompanyId) {
+            setCompany(savedCompanyId, savedCompanyName);
+            if (savedCompanyName) {
+              await updateContactList(savedCompanyId, savedCompanyName, savedContactId);
+            }
           }
-        
+
           form.classList.remove('opacity-50', 'pointer-events-none');
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { 
+        console.error("読み込みエラー:", e); 
+      }
     }
 
+    // 会社検索のイベント
     searchInput.addEventListener('input', async (e) => {
       const keyword = e.target.value.trim();
       if (keyword.length < 2) { resultList.classList.add('hidden'); return; }
@@ -198,36 +269,59 @@ import Layout from '../../layouts/Layout.astro';
             const cName = item.crm_company_company_name;
             if (cId && !seen.has(cId)) {
               const btn = document.createElement('button');
-              btn.type = 'button'; btn.className = 'search-btn-item';
-              btn.innerHTML = `<span></span><i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>`;
-              btn.querySelector('span').textContent = cName; // 安全に代入
+              btn.type = 'button'; 
+              btn.className = 'search-btn-item';
               
+              // order_out.astro の成功パターンを反映
+              btn.style.display = 'flex';           
+              btn.style.width = '100%';             
+              btn.style.justifyContent = 'space-between';
+              btn.style.alignItems = 'center';
+              btn.style.whiteSpace = 'nowrap'; // 絶対改行させない
+
+              const nameSpan = document.createElement('span');
+              nameSpan.textContent = cName;
+              nameSpan.className = 'font-medium text-slate-700';
+              // 長い名前を「...」にするための3点セット
+              nameSpan.style.overflow = 'hidden';
+              nameSpan.style.textOverflow = 'ellipsis';
+              nameSpan.style.whiteSpace = 'nowrap'; 
+              nameSpan.style.flex = '1';
+              nameSpan.style.textAlign = 'left';
+              
+              const icon = document.createElement('i');
+              icon.className = 'fa-solid fa-chevron-right text-slate-300 text-xs ml-2';
+              icon.style.flexShrink = '0'; // アイコンが潰れるのを防ぐ
+              
+              btn.appendChild(nameSpan);
+              btn.appendChild(icon);
+
               btn.onclick = () => {
                 setCompany(cId, cName);
-                // 担当者絞り込み
-                const companyContacts = result.data.filter(d => d.crm_company_id == cId && d.crm_contact_id);
-                contactSelect.innerHTML = '<option value="">選択してください</option>';
-                companyContacts.forEach(c => {
-                  contactSelect.appendChild(new Option(`${c.crm_contact_last_name} ${c.crm_contact_first_name}`, c.crm_contact_id));
-                });
+                updateContactList(cId, cName);
               };
               resultList.appendChild(btn);
               seen.add(cId);
             }
           });
         }
-      } catch (e) {}
+      } catch (e) { console.error(e); }
     });
 
+    // 保存処理
     form.onsubmit = async (e) => {
       e.preventDefault();
       const formData = new FormData(e.target);
       try {
         const res = await fetch('/api/save_project.php', { method: 'POST', body: formData });
         const result = await res.json();
-        if (result.status === 'success') location.href = '/projects';
-        else alert('更新エラー: ' + result.message);
-      } catch (err) { alert('通信に失敗しました。'); }
+        if (result.status === 'success') {
+          alert('変更を保存しました');
+          location.href = `/projects/detail?id=${projectId}`;
+        } else {
+          alert('エラー: ' + result.message);
+        }
+      } catch (e) { console.error(e); }
     };
 
     loadDetail();

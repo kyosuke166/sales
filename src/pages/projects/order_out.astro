@@ -1,0 +1,300 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="下位発注登録">
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-800">所属会社への発注登録</h1>
+      <a id="back-link" href="/projects" class="text-slate-500 hover:text-slate-700 font-bold text-sm">← 詳細画面へ戻る</a>
+    </div>
+
+    <form id="project-form" class="form-card" enctype="multipart/form-data">
+      <input type="hidden" name="project_id" id="field-project_id">
+      <input type="hidden" name="id" id="field-id">
+
+      <div class="mb-10">
+        <h2 class="form-section-title">発注内容</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <div class="relative">
+            <label class="field-label">所属会社を選択</label>
+            <input type="text" id="project-search" class="input-base" placeholder="会社名を検索..." autocomplete="off">
+            <input type="hidden" name="company_id" id="project-target-id" required>
+            <div id="project-results" class="search-dropdown hidden"></div>
+            <div id="project-selected-display" class="hidden"></div>
+          </div>
+          
+          <div>
+            <label class="field-label">担当者 (任意)</label>
+            <select name="contact_id" id="project-contact-select" class="input-base">
+              <option value="">会社を先に選択してください</option>
+            </select>
+          </div>
+
+          <div><label class="field-label">要員名</label><input type="text" name="worker_name" id="f-worker" class="input-base" required placeholder="例：山田 太郎"></div>
+          <div><label class="field-label">注文番号 (PO番号)</label><input type="text" name="order_number" class="input-base"></div>
+
+          <div><label class="field-label">開始日</label><input type="date" name="start_date" id="f-start" class="input-base" required></div>
+          <div><label class="field-label">終了日</label><input type="date" name="end_date" id="f-end" class="input-base" required></div>
+
+          <div><label class="field-label">月額単価 (税抜)</label><input type="number" name="amount" id="f-amount" class="input-base" required></div>
+          <div><label class="field-label">精算幅 (h)</label><input type="text" name="time_range" id="f-range" class="input-base" placeholder="140-180"></div>
+
+          <div><label class="field-label">支払サイト</label><input type="text" name="payment_site" class="input-base" placeholder="例：月末締め翌月末"></div>
+          
+          <div class="hidden md:block"></div>
+
+          <div class="md:col-span-2">
+            <label class="field-label text-blue-600 font-bold">発注書PDF (アップロード用)</label>
+            <div class="flex flex-col gap-2">
+                <input type="file" name="order_file" accept=".pdf" class="input-base">
+                <div id="file-status-container" class="flex items-center gap-2 px-1">
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-6 border-t border-slate-100">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-12 rounded-lg shadow-lg">
+          発注情報を保存する
+        </button>
+      </div>
+    </form>
+  </div>
+</Layout>
+
+<style>
+  /* new.astro のスタイル [cite: 8, 10, 11, 13, 19] */
+  .form-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 2rem; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); }
+  .form-section-title { font-size: 1.1rem; font-weight: bold; border-left: 4px solid #3b82f6; padding-left: 1rem; margin-bottom: 1.5rem; color: #1e293b; }
+  .field-label { font-size: 0.875rem; font-weight: 600; color: #64748b; margin-bottom: 0.5rem; display: block; }
+  .input-base { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.95rem; background-color: #fcfcfd; }
+  .search-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 250px; overflow-y: auto; background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-top: 0.25rem; }
+  .search-btn-item { width: 100%; border: none; border-bottom: 1px solid #f1f5f9; background: white; cursor: pointer; text-align: left; padding: 0.75rem 1rem; }
+  .search-btn-item:hover { background-color: #f8fafc; }
+  .selected-badge { display: flex; align-items: center; justify-content: space-between; background: #f1f5f9; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; margin-top: 0.5rem; }
+  .hidden { display: none; }
+</style>
+
+<script is:inline>
+  // new.astro のスクリプトロジック [cite: 21, 23, 24, 26, 28, 33, 34]
+  const pSearchInput = document.getElementById('project-search');
+  const pResultList = document.getElementById('project-results');
+  const pTargetId = document.getElementById('project-target-id');
+  const pSelectedDiv = document.getElementById('project-selected-display');
+  const pContactSelect = document.getElementById('project-contact-select');
+
+  pSearchInput.addEventListener('input', async (e) => {
+    const keyword = e.target.value.trim();
+    if (keyword.length < 2) { pResultList.classList.add('hidden'); return; }
+
+    try {
+      const res = await fetch(`/api/get_contacts.php?q=${encodeURIComponent(keyword)}&limit=30`);
+      const result = await res.json();
+      
+      if (result.status === 'success' && result.data) {
+        pResultList.innerHTML = '';
+        const seen = new Set();
+
+        result.data.forEach(item => {
+          const cId = item.crm_company_id;
+          const cName = item.crm_company_company_name;
+          if (!cId || seen.has(cId)) return;
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'search-btn-item';
+          btn.style.display = 'flex';           
+          btn.style.width = '100%';             
+          btn.style.justifyContent = 'space-between';
+          btn.style.alignItems = 'center';
+
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = cName;
+          nameSpan.style.overflow = 'hidden';
+          nameSpan.style.textOverflow = 'ellipsis';
+          nameSpan.className = 'font-medium text-slate-700';
+          
+          const icon = document.createElement('i');
+          icon.className = 'fa-solid fa-chevron-right text-slate-300 text-xs';
+          
+          btn.appendChild(nameSpan);
+          btn.appendChild(icon);
+          
+          btn.onclick = () => {
+            pTargetId.value = cId;
+            pSearchInput.classList.add('hidden');
+            pResultList.classList.add('hidden');
+            
+            pSelectedDiv.innerHTML = `
+              <div class="selected-badge">
+                <span class="font-bold text-blue-600">${cName}</span>
+                <button type="button" onclick="window.resetProjectSelection()" class="text-red-500 text-xs font-bold hover:underline">解除</button>
+              </div>
+            `;
+            pSelectedDiv.classList.remove('hidden');
+
+            pContactSelect.innerHTML = '<option value="">担当者を選択（任意）</option>';
+            const filtered = result.data.filter(d => d.crm_company_id == cId);
+            filtered.forEach(c => {
+              if (!c.crm_contact_id) return;
+              const opt = document.createElement('option');
+              opt.value = c.crm_contact_id;
+              // 姓名連結ロジック (null回避)
+              const lastName = c.crm_contact_last_name || '';
+              const firstName = c.crm_contact_first_name || '';
+              opt.textContent = firstName ? `${lastName} ${firstName}` : lastName || '名前なし';
+              pContactSelect.appendChild(opt);
+            });
+          };
+
+          pResultList.appendChild(btn);
+          seen.add(cId);
+        });
+        if (pResultList.children.length > 0) pResultList.classList.remove('hidden');
+      }
+    } catch (err) { console.error(err); }
+  });
+
+  window.resetProjectSelection = () => {
+    pTargetId.value = '';
+    pSearchInput.value = '';
+    pSearchInput.classList.remove('hidden');
+    pSelectedDiv.classList.add('hidden');
+    pContactSelect.innerHTML = '<option value="">会社を先に選択してください</option>';
+  };
+
+  // 初期化：データの読み込みとモード判定
+  (async function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('id');           // 発注ID（編集用）
+    const projectId = urlParams.get('project_id'); // 案件ID（新規用）
+
+    const titleEl = document.querySelector('h1');
+    const submitBtn = document.getElementById('project-form').querySelector('button[type="submit"]');
+
+    // --- 【編集モード】既存の発注データを読み込む ---
+    if (orderId) {
+      titleEl.textContent = '発注情報の編集';
+      submitBtn.textContent = '変更を保存する';
+      
+      try {
+        const res = await fetch(`/api/get_order_out.php?id=${orderId}`);
+        const result = await res.json();
+        
+        if (result.status === 'success' && result.data) {
+          const d = result.data;
+          document.getElementById('field-id').value = d.id;
+          document.getElementById('field-project_id').value = d.project_id;
+          document.getElementById('f-worker').value = d.worker_name || '';
+          document.querySelector('input[name="order_number"]').value = d.order_number || '';
+          document.getElementById('f-start').value = d.start_date || '';
+          document.getElementById('f-end').value = d.end_date || '';
+          document.getElementById('f-amount').value = d.amount || '';
+          document.getElementById('f-range').value = d.time_range || '';
+          document.querySelector('input[name="payment_site"]').value = d.payment_site || '';
+          const fileStatusContainer = document.getElementById('file-status-container');
+          if (fileStatusContainer) {
+              if (d.file_path) {
+                  fileStatusContainer.innerHTML = `
+                      <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">
+                          <i class="fa-solid fa-check"></i> 登録済み
+                      </span>
+                      <span class="text-[10px] text-slate-400">${d.file_path.split('/').pop()}</span>
+                  `;
+              } else {
+                  fileStatusContainer.innerHTML = `
+                      <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold">未登録</span>
+                  `;
+              }
+          }
+          // 戻るボタンのリンク先を案件詳細へ
+          document.getElementById('back-link').href = `/projects/detail?id=${d.project_id}`;
+
+          // 会社と担当者の復元
+          if (d.company_id) {
+            // 会社を選択状態にする（既存のバッジ表示ロジックを利用）
+            pTargetId.value = d.company_id;
+            pSearchInput.classList.add('hidden');
+            pSelectedDiv.innerHTML = `
+              <div class="selected-badge">
+                <span class="font-bold text-blue-600">${d.company_name}</span>
+                <button type="button" onclick="window.resetProjectSelection()" class="text-red-500 text-xs font-bold hover:underline">解除</button>
+              </div>
+            `;
+            pSelectedDiv.classList.remove('hidden');
+
+            // 担当者リストを取得してセット
+            await fetchContactsForCompany(d.company_id, d.company_name, d.contact_id);
+          }
+        }
+      } catch (err) { console.error("編集データ読み込みエラー:", err); }
+
+    // --- 【新規モード】案件情報から初期値をコピーする ---
+    } else if (projectId) {
+      titleEl.textContent = '所属会社への発注登録';
+      submitBtn.textContent = '発注情報を保存する';
+      document.getElementById('field-project_id').value = projectId;
+      document.getElementById('back-link').href = `/projects/detail?id=${projectId}`;
+
+      const res = await fetch(`/api/get_projects.php?id=${projectId}`);
+      const result = await res.json();
+      if (result.status === 'success') {
+        const p = result.data;
+        document.getElementById('f-worker').value = p.worker_name || '';
+        document.getElementById('f-start').value = p.start_date || '';
+        document.getElementById('f-end').value = p.end_date || '';
+        document.getElementById('f-range').value = p.time_range || '';
+      }
+    }
+  })();
+
+  // 担当者リスト取得用に関数化
+  async function fetchContactsForCompany(cId, cName, selectedContactId = null) {
+    try {
+      const res = await fetch(`/api/get_contacts.php?q=${encodeURIComponent(cName)}`);
+      const result = await res.json();
+      if (result.status === 'success' && result.data) {
+        pContactSelect.innerHTML = '<option value="">担当者を選択（任意）</option>';
+        const filtered = result.data.filter(d => d.crm_company_id == cId);
+        filtered.forEach(c => {
+          if (!c.crm_contact_id) return;
+          const opt = document.createElement('option');
+          opt.value = c.crm_contact_id;
+          const lastName = c.crm_contact_last_name || '';
+          const firstName = c.crm_contact_first_name || '';
+          opt.textContent = firstName ? `${lastName} ${firstName}` : lastName || '名前なし';
+          if (selectedContactId && c.crm_contact_id == selectedContactId) opt.selected = true;
+          pContactSelect.appendChild(opt);
+        });
+      }
+    } catch (err) { console.error(err); }
+  }
+
+  // 保存処理 (new.astro 34行目準拠)
+  document.getElementById('project-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '保存中...';
+
+    try {
+      const res = await fetch('/api/save_order_out.php', { method: 'POST', body: new FormData(e.target) });
+      const result = await res.json();
+      if (result.status === 'success') {
+        alert('発注情報を保存しました');
+        // 一覧ではなく詳細画面へ戻す
+        const pid = document.getElementById('field-project_id').value;
+        location.href = `/projects/detail?id=${pid}`;
+      } else {
+        alert('エラー: ' + result.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = '発注情報を保存する';
+      }
+    } catch (err) {
+      submitBtn.disabled = false;
+    }
+  });
+</script>

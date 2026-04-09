@@ -26,7 +26,7 @@ import Layout from '../../layouts/Layout.astro';
       </div>
 
       <div class="mb-10">
-        <h2 class="form-section-title">受注内容 (上位会社)</h2>
+        <h2 class="form-section-title">受注内容</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="relative">
             <label class="field-label">上位会社を選択</label>
@@ -104,7 +104,7 @@ import Layout from '../../layouts/Layout.astro';
 <script is:inline>
   // 要素を確実に取得
   const pSearchInput = document.getElementById('project-search');
-  const pResultList = document.getElementById('project-results'); // これがエラーの元でした
+  const pResultList = document.getElementById('project-results');
   const pTargetId = document.getElementById('project-target-id');
   const pSelectedDiv = document.getElementById('project-selected-display');
   const pContactSelect = document.getElementById('project-contact-select');
