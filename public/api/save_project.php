@@ -6,33 +6,48 @@ try {
     $pdo = get_db_connection();
     $pdo->beginTransaction();
 
-    // --- 1. 基本データの登録 ---
     $id = $_POST['id'] ?? null;
+
+    // --- 【追加】ステータスのみ更新のショートカット処理 ---
+    // project_name がなく、status がある場合は一覧画面からの切り替えとみなす
+    if ($id && !isset($_POST['project_name']) && isset($_POST['status'])) {
+        $stmt = $pdo->prepare("UPDATE projects SET status = :status, updated = NOW() WHERE id = :id");
+        $stmt->execute([
+            ':status' => (int)$_POST['status'],
+            ':id' => $id
+        ]);
+        $pdo->commit();
+        echo json_encode(['status' => 'success', 'message' => 'ステータスを更新しました']);
+        exit;
+    }
+
+    // --- 以下、通常の登録・更新ロジック ---
     $project_name = $_POST['project_name'] ?? '';
     $memo         = $_POST['memo'] ?? '';
     
     // projectsテーブル
     if ($id) {
-        $stmt = $pdo->prepare("UPDATE projects SET project_name = :name, memo = :memo, updated = NOW() WHERE id = :id");
-        $stmt->execute([':name' => $project_name, ':memo' => $memo, ':id' => $id]);
+        // 更新時は status も一緒に送られてくる可能性があるので含めておく
+        $status = isset($_POST['status']) ? (int)$_POST['status'] : 1;
+        $stmt = $pdo->prepare("UPDATE projects SET project_name = :name, memo = :memo, status = :status, updated = NOW() WHERE id = :id");
+        $stmt->execute([':name' => $project_name, ':memo' => $memo, ':status' => $status, ':id' => $id]);
         $project_id = $id;
     } else {
-        $stmt = $pdo->prepare("INSERT INTO projects (project_name, memo, status, created) VALUES (:name, :memo, 'active', NOW())");
+        $stmt = $pdo->prepare("INSERT INTO projects (project_name, memo, status, created) VALUES (:name, :memo, 1, NOW())");
         $stmt->execute([':name' => $project_name, ':memo' => $memo]);
         $project_id = $pdo->lastInsertId();
     }
 
-    // order_inテーブル（一旦ファイルパス抜きで登録/更新してIDを得る）
+    // order_inテーブル
     $order_params = [
         ':p_id'         => $project_id,
         ':c_id'         => $_POST['company_id'] ?: null,
-        ':contact_id'   => $_POST['contact_id'] ?: null,
+        ':contact_id'   => $_POST['contact_id'] ?? $_POST['crm_contact_id'] ?? null,
         ':worker'       => $_POST['worker_name'] ?? '',
         ':order_num'    => $_POST['order_number'] ?? '',
         ':start'        => $_POST['start_date'] ?: null,
         ':end'          => $_POST['end_date'] ?: null,
-        ':amt'          => ($_POST['amount'] === '' || $_POST['amount'] === null) ? 0 : $_POST['amount'],
-        ':amt'          => $_POST['amount'] ?? 0,
+        ':amt'          => (isset($_POST['amount']) && $_POST['amount'] !== '') ? $_POST['amount'] : 0,
         ':range'        => $_POST['time_range'] ?? '',
         ':site'         => $_POST['payment_site'] ?? ''
     ];
@@ -52,7 +67,6 @@ try {
         $stmt_order = $pdo->prepare($sql_order);
         $stmt_order->execute($order_params);
         
-        // 更新時は既存のIDを取得
         $stmt_get_id = $pdo->prepare("SELECT id FROM order_in WHERE project_id = :p_id");
         $stmt_get_id->execute([':p_id' => $project_id]);
         $order_in_id = $stmt_get_id->fetchColumn();
@@ -64,25 +78,25 @@ try {
         $order_in_id = $pdo->lastInsertId();
     }
 
-    // --- 2. ファイル名の確定と保存 ---
+    // --- ファイル保存ロジック (変更なし) ---
     if (isset($_FILES['order_file']) && $_FILES['order_file']['error'] === UPLOAD_ERR_OK) {
-        // フォルダを in/ に分ける
-        $upload_dir = __DIR__ . '/../uploads/orders/in/';
-        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+        // 絶対パスによる保存先指定
+        $base_upload_path = "/home/sbt-inc/www/sales/upload/order_in/";
+        if (!is_dir($base_upload_path)) mkdir($base_upload_path, 0755, true);
 
-        // 規則: project_id(5桁)-order_in_id(3桁)_注文番号.pdf
-        $p_id_papped = str_pad($project_id, 5, '0', STR_PAD_LEFT);
-        $o_id_papped = str_pad($order_in_id, 3, '0', STR_PAD_LEFT);
-        $clean_order_num = preg_replace('/[\\/:*?"<>|]/', '', $_POST['order_number'] ?? 'no-number'); // ファイル名禁止文字除外
+        // 命名規則: プロジェクトID(5桁)-受注ID(5桁)_注文番号
+        $p_id_padded = str_pad($project_id, 5, '0', STR_PAD_LEFT);
+        $o_id_padded = str_pad($order_in_id, 5, '0', STR_PAD_LEFT);
+        $clean_order_num = preg_replace('/[\\/:*?"<>|]/', '', $_POST['order_number'] ?? 'no-number');
         
         $extension = pathinfo($_FILES['order_file']['name'], PATHINFO_EXTENSION);
-        $new_filename = "{$p_id_papped}-{$o_id_papped}_{$clean_order_num}.{$extension}";
+        $new_filename = "{$p_id_padded}-{$o_id_padded}_{$clean_order_num}.{$extension}";
         
-        $target_path = $upload_dir . $new_filename;
-        $db_path = 'uploads/orders/in/' . $new_filename;
+        $target_path = $base_upload_path . $new_filename;
+        // DBにはWEB公開用の相対パスを保存
+        $db_path = 'upload/order_in/' . $new_filename;
 
         if (move_uploaded_file($_FILES['order_file']['tmp_name'], $target_path)) {
-            // パスをDBに反映
             $stmt_update_file = $pdo->prepare("UPDATE order_in SET file_path = :path WHERE id = :oid");
             $stmt_update_file->execute([':path' => $db_path, ':oid' => $order_in_id]);
         }

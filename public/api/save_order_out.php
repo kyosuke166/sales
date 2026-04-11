@@ -45,20 +45,23 @@ try {
         $order_out_id = $pdo->lastInsertId();
     }
 
-    // --- ファイル保存 (out用フォルダ) ---
+    // --- ファイル保存 (発注注文書用フォルダ) ---
     if (isset($_FILES['order_file']) && $_FILES['order_file']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = __DIR__ . '/../uploads/orders/out/';
-        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+        // 絶対パスによる保存先指定
+        $base_upload_path = "/home/sbt-inc/www/sales/upload/order_out/";
+        if (!is_dir($base_upload_path)) mkdir($base_upload_path, 0755, true);
 
+        // 命名規則: プロジェクトID(5桁)-発注ID(5桁)_注文番号
         $p_id_pad = str_pad($project_id, 5, '0', STR_PAD_LEFT);
-        $o_id_pad = str_pad($order_out_id, 3, '0', STR_PAD_LEFT);
+        $o_id_pad = str_pad($order_out_id, 5, '0', STR_PAD_LEFT);
         $clean_num = preg_replace('/[\\/:*?"<>|]/', '', $_POST['order_number'] ?? 'no-number');
         
         $ext = pathinfo($_FILES['order_file']['name'], PATHINFO_EXTENSION);
-        $new_filename = "{$p_id_pad}-out-{$o_id_pad}_{$clean_num}.{$ext}";
+        $new_filename = "{$p_id_pad}-{$o_id_pad}_{$clean_num}.{$ext}";
         
-        $target_path = $upload_dir . $new_filename;
-        $db_path = 'uploads/orders/out/' . $new_filename;
+        $target_path = $base_upload_path . $new_filename;
+        // DBにはWEB公開用の相対パスを保存
+        $db_path = 'upload/order_out/' . $new_filename;
 
         if (move_uploaded_file($_FILES['order_file']['tmp_name'], $target_path)) {
             $stmt = $pdo->prepare("UPDATE order_out SET file_path = :path WHERE id = :id");
