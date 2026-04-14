@@ -339,6 +339,92 @@ import Layout from '../../layouts/Layout.astro';
     justify-content: center;
     white-space: nowrap; /* 折り返し防止 */
   }
+
+  /* --- モバイル対応（レスポンシブ） --- */
+  @media (max-width: 768px) {
+    /* 1. コントロールボタンとCSVボタンを非表示 */
+    .controls, .col-action {
+      display: none !important;
+    }
+
+    /* 2. テーブル構造の再定義 */
+    .admin-table {
+      margin-left: 0 !important;
+      width: 100% !important;
+    }
+
+    .admin-table tr {
+      display: flex; /* 横並びのレイアウトを構築 */
+      align-items: center;
+      padding: 12px 10px;
+      gap: 12px;
+    }
+
+    /* 左側：日付（幅を固定して縦に積む） */
+    .col-date {
+      flex: 0 0 45px; /* 日付の幅を固定 */
+      padding: 0 !important;
+      border: none !important;
+    }
+    .date-box {
+      flex-direction: column; /* 月/日を縦に並べる */
+      align-items: center;
+      font-size: 0.8rem;
+    }
+    .date-s { display: none; } /* スラッシュを消す */
+    .date-w { width: auto; font-size: 0.7rem; }
+
+    /* 中央：メイン情報 */
+    .col-name {
+      flex: 1; /* 残りの幅をすべて使う */
+      padding: 0 !important;
+      border: none !important;
+    }
+    .col-name strong {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 2px;
+      line-height: 1.3;
+    }
+    .organizer-text {
+      font-size: 0.75rem;
+      display: block; /* 改行させて配置を安定させる */
+    }
+
+    /* エリアと価格を横並びで小さく表示 */
+    .info-sub {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .col-area, .col-price {
+      display: inline-block !important;
+      width: auto !important;
+      padding: 0 !important;
+      border: none !important;
+      font-size: 0.7rem !important;
+    }
+
+    /* 右側：人数バッジ */
+    .col-count {
+      flex: 0 0 65px;
+      padding: 0 !important;
+      border: none !important;
+      text-align: right !important;
+    }
+    .count-link, .count-zero {
+      min-width: 60px !important;
+      padding: 4px 6px !important;
+      font-size: 0.75rem !important;
+      border-radius: 6px;
+    }
+
+    /* 月タイトルの調整 */
+    .month-title {
+      padding: 8px 10px !important;
+      font-size: 0.85rem;
+    }
+  }
 </style>
 
 <script is:inline>

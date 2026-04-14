@@ -21,7 +21,10 @@ import Layout from '../../layouts/Layout.astro';
 
 <style is:global>
   .sync-section { margin-bottom: 40px; background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
-  .sync-section h3 { font-weight: bold; color: #1e293b; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+  .sync-section h3 { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+  .h3-left { display: flex; align-items: center; gap: 10px; }
+  .stats-summary { display: flex; gap: 15px; font-size: 0.75rem; font-weight: normal; color: #64748b; }
+  .stats-item b { color: #1e293b; font-family: monospace; }
   .sync-table { width: 100%; border-collapse: collapse; }
   .sync-table th { background: #f8fafc; padding: 12px; text-align: left; font-size: 0.75rem; color: #64748b; border-bottom: 2px solid #e2e8f0; }
   .sync-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; vertical-align: middle; }
@@ -42,11 +45,21 @@ import Layout from '../../layouts/Layout.astro';
 
       if (!result.success) throw new Error(result.message);
 
+      const st = result.stats; // 統計データ
       let html = '';
 
       // --- 交流会参加者データ ---
       html += `<div class="sync-section">
-        <h3><i class="fa-solid fa-handshake text-emerald-500"></i> 交流会参加者データとの照合 <span class="count-badge">メール一致</span></h3>`;
+        <h3>
+          <div class="h3-left">
+            <i class="fa-solid fa-handshake text-emerald-500"></i> 交流会参加者データとの照合 
+            <span class="count-badge">社名・氏名一致</span>
+          </div>
+          <div class="stats-summary">
+            <span class="stats-item">会社連携: <b>${st.event.linked_co}</b> / ${st.event.total}</span>
+            <span class="stats-item">担当者連携: <b>${st.event.linked_user}</b> / ${st.event.total}</span>
+          </div>
+        </h3>`;
       
       if (result.event && result.event.length > 0) {
         html += `
@@ -56,7 +69,7 @@ import Layout from '../../layouts/Layout.astro';
                 <th style="width:10px;"></th>
                 <th>元データ (社名 / 氏名 / 出所)</th>
                 <th style="width:80px; text-align:center;">同期</th>
-                <th>CRM登録内容 (社名 / 氏名)</th>
+                <th>CRM登録内容 (社名 / 氏名 / メールアドレス)</th>
               </tr>
             </thead>
             <tbody>
@@ -67,7 +80,7 @@ import Layout from '../../layouts/Layout.astro';
                     <div class="font-bold text-slate-700">${d.company || '(不明)'} / ${d.name || '(不明)'}</div>
                     <div class="text-[11px] text-slate-500 mt-1 leading-relaxed">
                       <i class="fa-regular fa-calendar-check mr-1"></i> ${d.event_date}開催：${d.event_name} (${d.area})<br>
-                      <span class="bg-slate-100 px-1 rounded text-[10px]">No.${d.entry_number}</span> ${d.email}
+                      <span class="bg-slate-100 px-1 rounded text-[10px]">No.${d.entry_number}</span> ${d.email || '(メール未入力)'}
                     </div>
                   </td>
                   <td class="text-center">
@@ -78,6 +91,7 @@ import Layout from '../../layouts/Layout.astro';
                   <td>
                     <div class="text-indigo-600 font-bold">${d.crm_company || '(会社未登録)'}</div>
                     <div class="font-bold">${d.crm_name} <span class="text-xs font-normal text-slate-400">(CRM ID:${d.crm_contact_id})</span></div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">${d.crm_email || '(メール未登録)'}</div>
                   </td>
                 </tr>
               `).join('')}
@@ -90,7 +104,16 @@ import Layout from '../../layouts/Layout.astro';
 
       // --- 外部収集メールデータ ---
       html += `<div class="sync-section">
-        <h3><i class="fa-solid fa-envelope-open-text text-red-400"></i> 外部収集メールデータとの照合 <span class="count-badge">メール一致</span></h3>`;
+        <h3>
+          <div class="h3-left">
+            <i class="fa-solid fa-envelope-open-text text-red-400"></i> 外部収集メールデータとの照合 
+            <span class="count-badge">メール一致</span>
+          </div>
+          <div class="stats-summary">
+            <span class="stats-item">会社連携: <b>${st.leak.linked_co}</b> / ${st.leak.total}</span>
+            <span class="stats-item">担当者連携: <b>${st.leak.linked_user}</b> / ${st.leak.total}</span>
+          </div>
+        </h3>`;
 
       if (result.leak && result.leak.length > 0) {
         html += `
@@ -100,7 +123,7 @@ import Layout from '../../layouts/Layout.astro';
                 <th style="width:10px;"></th>
                 <th>元データ (社名 / 氏名 / 出所)</th>
                 <th style="width:80px; text-align:center;">同期</th>
-                <th>CRM登録内容 (社名 / 氏名)</th>
+                <th>CRM登録内容 (社名 / 氏名 / メールアドレス)</th>
               </tr>
             </thead>
             <tbody>
@@ -122,6 +145,7 @@ import Layout from '../../layouts/Layout.astro';
                   <td>
                     <div class="text-indigo-600 font-bold">${d.crm_company || '(会社未登録)'}</div>
                     <div class="font-bold">${d.crm_name} <span class="text-xs font-normal text-slate-400">(CRM ID:${d.crm_contact_id})</span></div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">${d.email || d.crm_email || ''}</div>
                   </td>
                 </tr>
               `).join('')}

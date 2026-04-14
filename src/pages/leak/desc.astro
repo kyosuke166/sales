@@ -45,6 +45,78 @@ import Layout from '../../layouts/Layout.astro';
   .modal-content { background: #fff; width: 90%; max-width: 500px; border-radius: 8px; overflow: hidden; }
   .modal-header { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
   .company-item:hover { background: #f0f7ff; color: #007bff; }
+
+  /* --- 漏洩宛先詳細：モバイル対応 --- */
+  @media (max-width: 768px) {
+    /* 1. ヘッダーとボタンの最適化 */
+    .header-container {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 15px 10px;
+    }
+    .header-container h2 {
+      font-size: 1.0rem; /* 長いタイトル対策 */
+      padding-left: 12px;
+      flex: none;
+      width: 100%;
+    }
+    .btn-sync {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* 2. テーブルの整理（Noとメールアドレス列の調整） */
+    .table-wrapper {
+      margin: 0 5px;
+    }
+
+    /* No列を非表示 */
+    .participant-table th:nth-child(1),
+    .participant-table td:nth-child(1) {
+      display: none;
+    }
+
+    /* 列幅の再配分 */
+    .participant-table th:nth-child(2) { width: 30% !important; } /* 会社名 */
+    .participant-table th:nth-child(3) { width: 25% !important; } /* 氏名 */
+    .participant-table th:nth-child(4) { width: 0; display: none; } /* メールのヘッダーを隠す */
+    .participant-table td:nth-child(4) { display: none; } /* メールのセルを一旦隠す（下段のemail-rowがあるため） */
+    .participant-table th:last-child { width: auto !important; } /* 操作 */
+
+    .participant-table td {
+      padding: 8px 5px;
+      font-size: 0.8rem;
+    }
+
+    /* 3. アクションボタンを大きくして押しやすく */
+    .action-btns {
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .btn-action {
+      width: 42px; /* モバイル専用サイズ */
+      height: 42px;
+    }
+    .btn-action i {
+      font-size: 1.1rem;
+    }
+
+    /* 4. CRMリンク情報の調整（email-row） */
+    .email-row td {
+      font-size: 0.7rem;
+      padding-top: 4px;
+      padding-bottom: 10px;
+      line-height: 1.4;
+      background: #fdfdfd;
+    }
+    
+    /* モーダルのレスポンシブ対応 */
+    .modal-content {
+      width: 95%;
+      margin: 10px;
+    }
+  }
 </style>
 
 <script is:inline>

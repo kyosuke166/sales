@@ -79,6 +79,66 @@ import Layout from '../../layouts/Layout.astro';
     transform: translateY(-2px);
     box-shadow: 0 4px 10px rgba(0,123,255,0.3);
   }
+
+  /* --- 詳細画面：モバイル対応 --- */
+  @media (max-width: 768px) {
+    /* 1. ヘッダー周りの調整 */
+    .header-container {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 15px 10px;
+    }
+    .header-container h2 {
+      font-size: 1.05rem; /* 長いイベント名でも入りやすく */
+      padding-left: 12px;
+    }
+    .btn-sync {
+      width: 100%; /* ボタンを横幅いっぱいに */
+      justify-content: center;
+    }
+
+    /* 2. テーブルの簡素化（構造は壊さず幅だけ調整） */
+    .table-wrapper {
+      margin: 0 5px; /* 余白を詰める */
+    }
+    
+    /* PC用の幅指定を上書き */
+    .participant-table th:nth-child(1), /* No */
+    .participant-table td:nth-child(1) {
+      display: none; /* モバイルではNoを消す */
+    }
+
+    .participant-table th:nth-child(4), /* コメント */
+    .participant-table td[rowspan="2"]:nth-child(4) {
+      display: none; /* モバイルではコメント欄を一旦隠す（メモボタンで確認できるため） */
+    }
+
+    .participant-table th:nth-child(2) { width: 35% !important; } /* 会社名 */
+    .participant-table th:nth-child(3) { width: 30% !important; } /* 氏名 */
+    .participant-table th:last-child { width: auto !important; }  /* 操作 */
+
+    .participant-table td {
+      padding: 8px 5px;
+      font-size: 0.85rem;
+    }
+
+    /* 3. 操作ボタンの調整 */
+    .action-btns {
+      justify-content: flex-end;
+      flex-wrap: wrap; /* 狭い画面ではボタンを折り返し */
+    }
+    .btn-action {
+      width: 40px; /* 少し大きくして押しやすく */
+      height: 40px;
+    }
+
+    /* メール行の調整 */
+    .email-row td {
+      font-size: 0.75rem;
+      padding-bottom: 8px;
+    }
+  }
 </style>
 
 <script>
