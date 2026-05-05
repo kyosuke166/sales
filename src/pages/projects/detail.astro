@@ -57,6 +57,7 @@ import Layout from '../../layouts/Layout.astro';
           <thead class="bg-slate-50">
             <tr>
               <th class="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">対象月</th>
+              <th class="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">稼働時間</th>
               <th class="px-6 py-3 text-left text-[10px] font-bold text-blue-500 uppercase tracking-widest">売上請求 (上位)</th>
               <th class="px-6 py-3 text-left text-[10px] font-bold text-red-500 uppercase tracking-widest">支払請求 (下位)</th>
               <th class="px-6 py-3 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">粗利 (月次)</th>
@@ -64,7 +65,7 @@ import Layout from '../../layouts/Layout.astro';
             </tr>
           </thead>
           <tbody id="invoice-schedule-list" class="divide-y divide-gray-100">
-            <tr><td colspan="5" class="px-6 py-8 text-center text-slate-400 italic text-xs">読み込み中...</td></tr>
+            <tr><td colspan="6" class="px-6 py-8 text-center text-slate-400 italic text-xs">読み込み中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -148,6 +149,17 @@ import Layout from '../../layouts/Layout.astro';
 
   // モーダル操作
   window.openInvoiceModal = (type, month) => {
+    // 下位(in)の請求を登録しようとしているが、発注情報(order_out)がない場合
+    if (type === 'in' && (!currentProjectData || !currentProjectData.order_out_id)) {
+        alert("先に「発注情報」を登録してください。");
+        return;
+    }
+    // 上位(out)の場合も同様に受注情報の存在チェックが必要なら追加
+    if (type === 'out' && (!currentProjectData || !currentProjectData.id)) { // order_inは通常案件と同時作成なら不要
+         alert("受注情報が見つかりません。");
+         return;
+    }
+
     const modal = document.getElementById('invoice-modal');
     const form = document.getElementById('invoice-form');
     form.reset();
@@ -156,7 +168,14 @@ import Layout from '../../layouts/Layout.astro';
     let idInput = getOrCreateHiddenInput(form, 'id');
     let pathInput = getOrCreateHiddenInput(form, 'existing_file_path');
 
+    // IDとパスの隠しフィールドを空にする（直前動作の残骸を消す）
+    idInput.value = "";
+    pathInput.value = "";
+
     const existingData = invoiceCache[type][month];
+    // 反対側のデータを確認 (上位を登録するなら下位のデータ、逆も然り)
+    const oppositeType = type === 'out' ? 'in' : 'out';
+    const oppositeData = invoiceCache[oppositeType][month];
     
     // モーダル内のPDF状態表示エリアをクリア/準備
     let pdfStatusEl = document.getElementById('pdf-status-display');
@@ -167,26 +186,32 @@ import Layout from '../../layouts/Layout.astro';
       document.querySelector('input[name="invoice_file"]').after(pdfStatusEl);
     }
 
+    // 一旦リセットする
+    pdfStatusEl.innerHTML = `<span class="text-slate-400"><i class="fa-solid fa-circle-minus"></i> PDF未登録</span>`;
     // 基本セット
     document.getElementById('form-type').value = type;
     document.getElementById('form-month').value = month;
     document.getElementById('form-project-id').value = new URLSearchParams(window.location.search).get('id');
     document.getElementById('display-form-month').textContent = month.replace('-', '/');
 
+    // --- 精算幅 (time_range) のセット ---
+    // 上位(out)なら order_in の time_range、下位(in)なら order_out の out_time_range
+    const defaultTimeRange = type === 'out' ? currentProjectData.time_range : currentProjectData.out_time_range;
+    document.getElementById('input-range').value = defaultTimeRange || '';
+
     if (existingData) {
       idInput.value = existingData.id;
       pathInput.value = existingData.file_path || "";
       
-      // PDF登録済みの表示
+      // PDF登録済みの場合のみ上書き表示
       if (existingData.file_path) {
         pdfStatusEl.innerHTML = `<span class="text-blue-600"><i class="fa-solid fa-circle-check"></i> PDF登録済み</span> <a href="/${existingData.file_path}" target="_blank" class="text-slate-400 underline ml-2">確認</a>`;
-      } else {
-        pdfStatusEl.innerHTML = `<span class="text-slate-400"><i class="fa-solid fa-circle-minus"></i> PDF未登録</span>`;
       }
 
       document.getElementById('input-worker').value = existingData.worker_name || '';
       document.getElementById('input-range').value = existingData.time_range || '';
       document.getElementById('input-hours').value = existingData.work_hours || '';
+      document.getElementById('input-range').value = existingData.time_range || (defaultTimeRange || '');
       document.getElementById('input-invoice-number').value = existingData.invoice_number || '';
       document.getElementById('input-amount').value = existingData.amount || 0;
       document.getElementById('input-amount-tax').value = existingData.amount_tax || 0;
@@ -195,15 +220,21 @@ import Layout from '../../layouts/Layout.astro';
       
       form.querySelector('button[type="submit"]').textContent = "更新保存";
     } else {
-      // 新規登録時のデフォルト値セットなど
-      document.getElementById('input-amount').value = 0;
-      document.getElementById('input-amount-tax').value = 0;
+      // 新規登録時
       form.querySelector('button[type="submit"]').textContent = "保存";
+      // 要員名のデフォルト（受注/発注情報から）
+      document.getElementById('input-worker').value = type === 'out' ? currentProjectData.worker_name : currentProjectData.out_worker_name;
+      // 稼働時間のセット：反対側の種別にデータがあれば、その稼働時間をコピーしてあげる
+      if (oppositeData && oppositeData.work_hours) {
+          document.getElementById('input-hours').value = oppositeData.work_hours;
+      }
+      // 単価の初期計算（必要なら）
+      const unitPrice = type === 'out' ? Number(currentProjectData.amount) : Number(currentProjectData.out_amount);
+      document.getElementById('input-amount').value = Math.floor(unitPrice); 
+      document.getElementById('input-amount-tax').value = Math.floor(unitPrice * 0.1);
     }
 
-    // ★重要：最後にこれを追加して合計額を再計算・表示させる
     calculateInvoice(); 
-
     modal.classList.remove('hidden');
   };
 
@@ -341,101 +372,101 @@ import Layout from '../../layouts/Layout.astro';
         const res = await fetch(`/api/get_invoice.php?project_id=${p.id}`);
         const invData = await res.json();
         
-        // キャッシュをリセット
+        // 1. キャッシュの初期化
         invoiceCache.out = {};
         invoiceCache.in = {};
 
         if (invData.status === 'success') {
-          invData.out.forEach(i => invoiceCache.out[i.work_month.substring(0,7)] = i);
-          invData.in.forEach(i => invoiceCache.in[i.work_month.substring(0,7)] = i);
+          // 2. データのマッピング（共通処理）
+          // キーを work_month(YYYY-MM) にしてキャッシュに格納
+          const mapToCache = (dataArr, targetCache) => {
+            if (Array.isArray(dataArr)) {
+              dataArr.forEach(i => { if (i.work_month) targetCache[i.work_month] = i; });
+            }
+          };
+          mapToCache(invData.out, invoiceCache.out);
+          mapToCache(invData.in, invoiceCache.in);
         }
 
+        // 3. 月リストの生成（ISOStringを使わず確実に生成）
         const months = [];
-        let cur = new Date(p.start_date);
-        const end = new Date(p.end_date);
-        while (cur <= end) {
-          months.push(cur.toISOString().substring(0, 7));
-          cur.setMonth(cur.getMonth() + 1);
+        let [sY, sM] = p.start_date.split('-').map(Number);
+        let [eY, eM] = p.end_date.split('-').map(Number);
+        
+        let curY = sY, curM = sM;
+        while (curY < eY || (curY === eY && curM <= eM)) {
+          months.push(`${curY}-${String(curM).padStart(2, '0')}`);
+          curM++;
+          if (curM > 12) { curM = 1; curY++; }
         }
+
+        // 4. テーブルの描画（共通コンポーネント関数化）
+        const renderInvoiceCell = (type, month) => {
+          const data = invoiceCache[type][month];
+          const isOut = type === 'out';
+          const colorClass = isOut ? 'blue' : 'red';
+          const label = isOut ? '入金' : '支払';
+          const dateField = isOut ? 'deposit_date' : 'paid_date';
+          const statusText = isOut ? '未発行' : '未到着';
+
+          if (!data) return `<span class="text-slate-300 text-[10px] italic">${statusText}</span>`;
+
+          const amount = Number(data.amount || 0).toLocaleString();
+          return `
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-${colorClass}-600 font-bold">¥${amount}</span>
+                ${data.file_path ? `
+                  <a href="/${data.file_path}" target="_blank" class="text-${colorClass}-400 hover:text-${colorClass}-600 transition-colors">
+                    <i class="fa-solid fa-file-pdf"></i>
+                  </a>` : ''}
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">${label}:</span>
+                <input type="date" value="${data[dateField] || ''}" 
+                  onchange="window.updatePaymentDate('${type}', ${data.id}, this.value)"
+                  class="text-[10px] border rounded px-1 py-0.5 bg-${colorClass}-50 border-${colorClass}-100 text-${colorClass}-700 outline-none">
+              </div>
+            </div>`;
+        };
 
         scheduleListEl.innerHTML = months.map(m => {
-        const out = invoiceCache.out[m], invIn = invoiceCache.in[m];
-        const s = out ? Number(out.amount) : 0;
-        const c = invIn ? Number(invIn.amount) : 0;
-        
-        return `
-          <tr class="hover:bg-slate-50 transition-colors text-sm">
-            <td class="px-6 py-4 font-mono font-bold text-slate-700">${m.replace('-', '/')}</td>
-            
-            <td class="px-6 py-4 border-r border-slate-50">
-              ${out ? `
-                <div class="flex flex-col gap-1">
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono text-blue-600 font-bold">¥${s.toLocaleString()}</span>
-                    ${out.file_path ? `
-                      <a href="/${out.file_path}" target="_blank" title="PDFを表示" class="text-blue-400 hover:text-blue-600 transition-colors">
-                        <i class="fa-solid fa-file-pdf"></i>
-                      </a>
-                    ` : ''}
-                  </div>
-                  <div class="flex items-center gap-1">
-                    <span class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">入金:</span>
-                    <input type="date" value="${out.deposit_date || ''}" 
-                      onchange="window.updatePaymentDate('out', ${out.id}, this.value)"
-                      class="text-[10px] border rounded px-1 py-0.5 bg-blue-50 border-blue-100 text-blue-700 outline-none">
-                  </div>
+          const outData = invoiceCache.out[m];
+          const inData = invoiceCache.in[m];
+          const s = outData ? Number(outData.amount) : 0;
+          const c = inData ? Number(inData.amount) : 0;
+          const hours = (outData?.work_hours) || (inData?.work_hours) || '';
+          
+          return `
+            <tr class="hover:bg-slate-50 transition-colors text-sm">
+              <td class="px-6 py-4 font-mono font-bold text-slate-700">${m.replace('-', '/')}</td>
+              <td class="px-6 py-4 font-mono text-slate-500">
+                ${hours ? `<span class="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">${hours} <small class="text-[9px]">h</small></span>` : '-'}
+              </td>
+              <td class="px-6 py-4 border-r border-slate-50">${renderInvoiceCell('out', m)}</td>
+              <td class="px-6 py-4 border-r border-slate-50">${renderInvoiceCell('in', m)}</td>
+              <td class="px-6 py-4 text-center font-mono font-bold text-slate-500 bg-slate-50/50">
+                ¥${(s - c).toLocaleString()}
+              </td>
+              <td class="px-6 py-4 text-right">
+                <div class="flex justify-end gap-4">
+                  ${['out', 'in'].map(type => `
+                    <button onclick="window.openInvoiceModal('${type}', '${m}')" 
+                      class="${invoiceCache[type][m] ? (type==='out'?'text-blue-600':'text-red-600') : 'text-slate-300'} hover:opacity-70 transition-all transform hover:scale-110">
+                      <span class="fa-layers fa-fw fa-lg">
+                        <i class="fa-solid fa-file-invoice"></i>
+                        <i class="fa-solid fa-arrow-${type==='out'?'up':'down'} text-[10px] -right-1 -top-1 absolute bg-white rounded-full"></i>
+                      </span>
+                    </button>
+                  `).join('')}
                 </div>
-              ` : '<span class="text-slate-300 text-[10px] italic">未発行</span>'}
-            </td>
-            
-            <td class="px-6 py-4 border-r border-slate-50">
-              ${invIn ? `
-                <div class="flex flex-col gap-1">
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono text-red-600 font-bold">¥${c.toLocaleString()}</span>
-                    ${invIn.file_path ? `
-                      <a href="/${invIn.file_path}" target="_blank" title="PDFを表示" class="text-red-400 hover:text-red-600 transition-colors">
-                        <i class="fa-solid fa-file-pdf"></i>
-                      </a>
-                    ` : ''}
-                  </div>
-                  <div class="flex items-center gap-1">
-                    <span class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">支払:</span>
-                    <input type="date" value="${invIn.paid_date || ''}" 
-                      onchange="window.updatePaymentDate('in', ${invIn.id}, this.value)"
-                      class="text-[10px] border rounded px-1 py-0.5 bg-red-50 border-red-100 text-red-700 outline-none">
-                  </div>
-                </div>
-              ` : '<span class="text-slate-300 text-[10px] italic">未到着</span>'}
-            </td>
-            
-            <td class="px-6 py-4 text-center font-mono font-bold text-slate-500 bg-slate-50/50">
-              ¥${(s - c).toLocaleString()}
-            </td>
-            
-            <td class="px-6 py-4 text-right">
-              <div class="flex justify-end gap-4">
-                <button onclick="window.openInvoiceModal('out', '${m}')" 
-                  title="売上請求の編集"
-                  class="${out ? 'text-blue-600' : 'text-slate-300'} hover:text-blue-800 transition-all transform hover:scale-110">
-                  <span class="fa-layers fa-fw fa-lg">
-                    <i class="fa-solid fa-file-invoice"></i>
-                    <i class="fa-solid fa-arrow-up text-[10px] -right-1 -top-1 absolute bg-white rounded-full"></i>
-                  </span>
-                </button>
-                <button onclick="window.openInvoiceModal('in', '${m}')" 
-                  title="支払請求の編集"
-                  class="${invIn ? 'text-red-600' : 'text-slate-300'} hover:text-red-800 transition-all transform hover:scale-110">
-                  <span class="fa-layers fa-fw fa-lg">
-                    <i class="fa-solid fa-file-invoice"></i>
-                    <i class="fa-solid fa-arrow-down text-[10px] -right-1 -top-1 absolute bg-white rounded-full"></i>
-                  </span>
-                </button>
-              </div>
-            </td>
-          </tr>`;
+              </td>
+            </tr>`;
         }).join('');
-      } catch (e) { console.error(e); }
+      } catch (e) { 
+        console.error("Schedule Load Error:", e);
+        scheduleListEl.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-4">データの読み込みに失敗しました</td></tr>';
+      }
     }
 
     async function loadDetail() {

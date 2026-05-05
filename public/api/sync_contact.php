@@ -25,9 +25,10 @@ if ($mode === 'preview') {
                         c.email AS crm_email
                     FROM events_participant ep
                     JOIN events e ON ep.event_id = e.id
-                    /* 担当者の氏名一致 (スペース無視) */
+                    /* 担当者の氏名一致 (スペース無視 ＋ 語尾の「様」を無視) */
                     JOIN crm_contact c ON (
-                        REPLACE(REPLACE(ep.participant_name, ' ', ''), '　', '') = REPLACE(REPLACE(CONCAT(IFNULL(c.last_name,''), IFNULL(c.first_name,'')), ' ', ''), '　', '')
+                        REPLACE(REPLACE(REPLACE(ep.participant_name, ' ', ''), '　', ''), '様', '') = 
+                        REPLACE(REPLACE(REPLACE(CONCAT(IFNULL(c.last_name,''), IFNULL(c.first_name,'')), ' ', ''), '　', ''), '様', '')
                     )
                     /* 会社名は LEFT JOIN にして、一致しなくても担当者さえいれば出す */
                     LEFT JOIN crm_company cp ON c.company_id = cp.id
@@ -90,7 +91,7 @@ if ($mode === 'preview') {
 // --- モード2：個別実行 (UPDATE) ---
 if ($mode === 'execute_single') {
     $id = $_POST['id'] ?? '';
-    $type = $_POST['type'] ?? ''; // 'event' か 'leak'
+    $type = $_POST['type'] ?? ''; 
     
     if (!$id || !$type) {
         echo json_encode(['success' => false, 'message' => 'パラメータ不足']);
@@ -101,29 +102,43 @@ if ($mode === 'execute_single') {
         $pdo = get_db_connection();
         
         if ($type === 'event') {
+            // プレビューと全く同じ条件でJOINしてUPDATEをかける
             $sql = "UPDATE events_participant ep 
                     JOIN crm_contact c ON (
-                        REPLACE(REPLACE(ep.participant_name, ' ', ''), '　', '') = REPLACE(REPLACE(CONCAT(IFNULL(c.last_name,''), IFNULL(c.first_name,'')), ' ', ''), '　', '')
+                        REPLACE(REPLACE(REPLACE(ep.participant_name, ' ', ''), '　', ''), '様', '') = 
+                        REPLACE(REPLACE(REPLACE(CONCAT(IFNULL(c.last_name,''), IFNULL(c.first_name,'')), ' ', ''), '　', ''), '様', '')
                     )
                     JOIN crm_company cp ON c.company_id = cp.id AND (
-                        REPLACE(REPLACE(ep.company_name, ' ', ''), '　', '') = REPLACE(REPLACE(cp.company_name, ' ', ''), '　', '')
+                        REPLACE(REPLACE(ep.company_name, ' ', ''), '　', '') = REPLACE(REPLACE(IFNULL(cp.company_name,''), ' ', ''), '　', '')
                     )
                     SET 
                         ep.contact_id = c.id, 
                         ep.company_id = c.company_id,
                         ep.email = CASE WHEN ep.email IS NULL OR ep.email = '' THEN c.email ELSE ep.email END
-                    WHERE ep.id = ? AND ep.contact_id IS NULL";
+                    WHERE ep.id = ? 
+                    AND ep.contact_id IS NULL 
+                    AND c.deleted IS NULL"; // 削除済みを除外
         } else {
+            // leak 側
             $sql = "UPDATE leaked_contacts lc 
                     JOIN crm_contact c ON lc.email = c.email 
                     SET lc.contact_id = c.id, lc.company_id = c.company_id 
-                    WHERE lc.id = ? AND lc.contact_id IS NULL";
+                    WHERE lc.id = ? AND lc.contact_id IS NULL AND c.deleted IS NULL";
         }
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$id]);
         
-        echo json_encode(['success' => true]);
+        // 実際に何件更新されたかチェック
+        $count = $stmt->rowCount();
+        
+        if ($count === 0) {
+            // 更新されなかった場合、原因を探るためにエラーではなく成功だがメッセージを返すなどの対応
+            echo json_encode(['success' => true, 'debug' => '更新対象が見つかりませんでした。条件が一致していない可能性があります。']);
+        } else {
+            echo json_encode(['success' => true]);
+        }
+
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }

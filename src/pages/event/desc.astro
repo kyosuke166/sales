@@ -80,63 +80,112 @@ import Layout from '../../layouts/Layout.astro';
     box-shadow: 0 4px 10px rgba(0,123,255,0.3);
   }
 
-  /* --- 詳細画面：モバイル対応 --- */
   @media (max-width: 768px) {
-    /* 1. ヘッダー周りの調整 */
-    .header-container {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 12px;
-      margin: 15px 10px;
+    /* --- 修正：ヘッダーを2列で見せる --- */
+    .participant-table thead {
+      display: block; /* ここを活かす */
+      background: #333;
     }
-    .header-container h2 {
-      font-size: 1.05rem; /* 長いイベント名でも入りやすく */
-      padding-left: 12px;
+    .participant-table thead tr {
+      display: flex; /* 行をFlexboxに */
+      padding: 0 5px;
+      border: none;
     }
-    .btn-sync {
-      width: 100%; /* ボタンを横幅いっぱいに */
-      justify-content: center;
+    /* 不要なヘッダー（No, 氏名, コメント）を隠す */
+    .participant-table th:nth-child(1),
+    .participant-table th:nth-child(3),
+    .participant-table th:nth-child(4) {
+      display: none;
     }
-
-    /* 2. テーブルの簡素化（構造は壊さず幅だけ調整） */
-    .table-wrapper {
-      margin: 0 5px; /* 余白を詰める */
-    }
-    
-    /* PC用の幅指定を上書き */
-    .participant-table th:nth-child(1), /* No */
-    .participant-table td:nth-child(1) {
-      display: none; /* モバイルではNoを消す */
-    }
-
-    .participant-table th:nth-child(4), /* コメント */
-    .participant-table td[rowspan="2"]:nth-child(4) {
-      display: none; /* モバイルではコメント欄を一旦隠す（メモボタンで確認できるため） */
-    }
-
-    .participant-table th:nth-child(2) { width: 35% !important; } /* 会社名 */
-    .participant-table th:nth-child(3) { width: 30% !important; } /* 氏名 */
-    .participant-table th:last-child { width: auto !important; }  /* 操作 */
-
-    .participant-table td {
-      padding: 8px 5px;
+    /* 「会社名」を見出しの左側に */
+    .participant-table th:nth-child(2) {
+      display: block;
+      flex: 1; /* 左側を埋める */
+      border: none;
+      padding: 10px;
+      color: #fff;
       font-size: 0.85rem;
     }
-
-    /* 3. 操作ボタンの調整 */
-    .action-btns {
-      justify-content: flex-end;
-      flex-wrap: wrap; /* 狭い画面ではボタンを折り返し */
+    /* 「連携・配信操作」を見出しの右側に */
+    .participant-table th:nth-child(5) {
+      display: block;
+      width: 160px; /* ボディ側のアイコン幅と合わせる */
+      text-align: right;
+      border: none;
+      padding: 10px;
+      color: #fff;
+      font-size: 0.85rem;
     }
-    .btn-action {
-      width: 40px; /* 少し大きくして押しやすく */
-      height: 40px;
+      
+    .participant-table tbody, 
+    .participant-table tr { 
+      display: block; 
+    }
+    /* ↓ ここにあった display: none; の一行を削除しました ↓ */
+
+    /* 1行目（社名、氏名、アイコンがある行）をFlexレイアウトに */
+    .participant-table tr:not(.email-row) {
+      display: flex;
+      flex-wrap: wrap; /* 折り返しを許可 */
+      align-items: center;
+      padding: 10px 5px;
+      border-bottom: none;
+    }
+
+    /* 不要な列（No、コメント）を隠す */
+    .participant-table td:nth-child(1),
+    .participant-table td[rowspan="2"]:nth-child(4) {
+      display: none;
+    }
+
+    /* 左側エリア：会社名(2番目)と氏名(3番目) */
+    .participant-table td:nth-child(2),
+    .participant-table td:nth-child(3) {
+      display: block;
+      width: calc(100% - 160px) !important; 
+      border: none !important;
+      padding: 0 10px !important;
+      order: 1; 
+    }
+    
+    /* 氏名(3番目)を会社名の下にピタッとつける */
+    .participant-table td:nth-child(3) {
+      margin-top: 2px;
+    }
+
+    /* 右側エリア：操作ボタン(5番目) */
+    .participant-table td:nth-child(5) {
+      width: 160px !important;
+      border: none !important;
+      padding: 0 !important;
+      order: 2; 
+      display: flex;
+      justify-content: flex-end;
     }
 
     /* メール行の調整 */
+    .email-row {
+      display: block;
+      padding: 0 10px 10px 10px;
+      border-bottom: 1px solid #eee;
+    }
     .email-row td {
-      font-size: 0.75rem;
-      padding-bottom: 8px;
+      display: block;
+      width: 100% !important;
+      border: none !important;
+      padding: 0 !important;
+    }
+
+    /* アイコンが縦に並ばないように固定 */
+    .action-btns {
+      display: flex;
+      flex-wrap: nowrap !important;
+      gap: 4px;
+    }
+    .btn-action {
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
     }
   }
 </style>

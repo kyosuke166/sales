@@ -19,6 +19,7 @@ try {
     $pdo = get_db_connection();
     
     $exclude_group_name = null;
+    $resultLines = [];
     
     // 1. 除外するグループ系列名を取得
     if (!empty($exclude_company_id) && is_numeric($exclude_company_id)) {
@@ -38,7 +39,7 @@ try {
             AND c.email IS NOT NULL 
             AND c.email != ''
             AND c.deleted IS NULL
-            AND co.deleted IS NULL"; // 会社側も削除済みは除外
+            AND co.deleted IS NULL";
 
     // 除外条件（選択された会社のグループ系列名と同じ会社をすべて除外）
     if ($exclude_group_name !== null) {
@@ -50,7 +51,6 @@ try {
     $stmt = $pdo->query($sql);
     $contacts = $stmt->fetchAll();
 
-    $resultLines = [];
     foreach ($contacts as $c) {
         $email = trim($c['email']);
         $lastName = trim($c['last_name'] ?? '担当者');
@@ -62,6 +62,37 @@ try {
             $resultLines[] = "{$email},{$companyName} {$lastName}様";
         }
     }
+
+    // 3. 交流会参加者テーブルから抽出 (DISTINCTで重複排除)
+    $sql_event = "SELECT DISTINCT company_name, participant_name, email 
+                  FROM `events_participant` 
+                  WHERE send_flg = '1'";
+    $stmt_event = $pdo->query($sql_event);
+    while ($row = $stmt_event->fetch()) {
+        $email = trim($row['email']);
+        $pName = trim($row['participant_name'] ?? '担当者');
+        $cName = trim($row['company_name'] ?? '');
+
+        if (!empty($cName)) {
+            $resultLines[] = "{$email},{$cName} {$pName}様";
+        } else {
+            $resultLines[] = "{$email},{$pName}様";
+        }
+    }
+
+    // 4. 漏洩メールテーブルから抽出 (DISTINCTで重複排除)
+    $sql_leaked = "SELECT DISTINCT email, send_name 
+                   FROM `leaked_contacts` 
+                   WHERE send_name IS NOT NULL AND send_error IS NULL";
+    $stmt_leaked = $pdo->query($sql_leaked);
+    while ($row = $stmt_leaked->fetch()) {
+        $email = trim($row['email']);
+        $sName = trim($row['send_name'] ?? '担当者');
+        $resultLines[] = "{$email},{$sName}様";
+    }
+
+    // 全体の重複を最終チェック（必要であれば）
+    $resultLines = array_unique($resultLines);
 
     echo json_encode([
         'status' => 'success',

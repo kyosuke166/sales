@@ -566,7 +566,9 @@ import Layout from '../../layouts/Layout.astro';
                           <strong>${e.event_number || ''} ${e.event_name}</strong>
                           ${e.organizer ? `<span class="organizer-text">（${e.organizer}）</span>` : ''}
                         </td>
-                        <td class="col-area">${e.area || '-'}</td>
+                        <td class="col-area" title="${e.place && e.place.trim() !== '' ? e.place : '未登録'}">
+                          ${e.area || '-'}
+                        </td>
                         <td class="col-price">${e.price ? `￥${Number(e.price).toLocaleString()}` : '-'}</td>
                         <td class="col-count">
                           ${(e.current_count || 0) > 0 ? `
