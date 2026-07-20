@@ -1,0 +1,365 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="エンジニア一覧 | 一斉配信管理">
+  <main class="max-w-[1400px] mx-auto px-4 md:px-6 py-6">
+    <div class="mb-5 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <div>
+        <a href="/sendmail" class="text-xs font-bold text-cyan-600 hover:text-cyan-700">
+          <i class="fa-solid fa-chevron-left mr-1"></i> 一斉配信管理
+        </a>
+        <h1 class="mt-2 text-2xl md:text-3xl font-bold text-slate-800">エンジニア一覧</h1>
+      </div>
+      <button id="newBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">
+        <i class="fa-solid fa-plus mr-1"></i> エンジニア登録
+      </button>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 mb-5 flex flex-col lg:flex-row gap-3 lg:items-center">
+      <div class="relative flex-grow">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input id="searchInput" type="text" placeholder="イニシャル、スキル、希望、所属、状態、会社名で検索" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <select id="statusFilter" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+        <option value="">全ステータス</option>
+        <option value="draft">下書き</option>
+        <option value="active">営業中</option>
+        <option value="closed">終了</option>
+      </select>
+      <button id="searchBtn" class="px-5 py-2.5 rounded-lg bg-slate-800 text-white text-sm font-bold hover:bg-slate-700">検索</button>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-bold text-slate-500">エンジニア</th>
+              <th class="px-4 py-3 text-left text-xs font-bold text-slate-500">条件</th>
+              <th class="px-4 py-3 text-left text-xs font-bold text-slate-500">希望</th>
+              <th class="px-4 py-3 text-left text-xs font-bold text-slate-500">状態</th>
+              <th class="px-4 py-3 text-right text-xs font-bold text-slate-500">操作</th>
+            </tr>
+          </thead>
+          <tbody id="listBody" class="divide-y divide-slate-100">
+            <tr><td colspan="5" class="px-4 py-12 text-center text-slate-400">読み込み中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div id="modal" class="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-3">
+    <div class="bg-white w-full max-w-3xl max-h-[94vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 id="modalTitle" class="text-lg font-bold text-slate-800">エンジニア登録</h2>
+        <button id="closeX" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <form id="entryForm" class="overflow-y-auto p-5 md:p-6">
+        <input type="hidden" name="id" id="f_id">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+          
+          <!-- 状態 -->
+          <div class="md:col-span-2">
+            <label class="block text-sm font-bold text-slate-700 mb-2">状態 <span class="text-red-500">*</span></label>
+            <div class="flex gap-6">
+              <label class="flex items-center">
+                <input type="radio" name="status" value="draft" class="text-emerald-600 focus:ring-emerald-500 mr-2"> 下書き
+              </label>
+              <label class="flex items-center">
+                <input type="radio" name="status" value="active" class="text-emerald-600 focus:ring-emerald-500 mr-2"> 営業中
+              </label>
+              <label class="flex items-center">
+                <input type="radio" name="status" value="closed" class="text-emerald-600 focus:ring-emerald-500 mr-2"> 終了
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label for="f_received" class="block text-sm font-bold text-slate-700 mb-1">情報受領日 <span class="text-red-500">*</span></label>
+            <input type="date" required name="received" id="f_received" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div>
+            <label for="f_contact_method" class="block text-sm font-bold text-slate-700 mb-1">連絡手段 <span class="text-red-500">*</span></label>
+            <select required name="contact_method" id="f_contact_method" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+              <option value="メール">メール</option>
+              <option value="LINE">LINE</option>
+              <option value="SMS">SMS</option>
+              <option value="電話">電話</option>
+            </select>
+          </div>
+          <div>
+            <label for="f_company_id" class="block text-sm font-bold text-slate-700 mb-1">会社ID</label>
+            <input type="number" name="company_id" id="f_company_id" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div>
+            <label for="f_contact_id" class="block text-sm font-bold text-slate-700 mb-1">担当者ID</label>
+            <input type="number" name="contact_id" id="f_contact_id" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div class="md:col-span-2">
+            <label for="f_original" class="block text-sm font-bold text-slate-700 mb-1">元のエンジニア情報 <span class="text-red-500">*</span></label>
+            <textarea required name="original" id="f_original" rows="4" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2"></textarea>
+          </div>
+
+          <!-- 区切り線 -->
+          <div class="md:col-span-2 border-b border-slate-400 my-2"></div>
+
+          <div>
+            <label for="f_name" class="block text-sm font-bold text-slate-700 mb-1">イニシャル <span class="text-red-500">*</span></label>
+            <input type="text" required name="name" id="f_name" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div>
+            <label for="f_nationality" class="block text-sm font-bold text-slate-700 mb-1">国籍</label>
+            <input type="text" name="nationality" id="f_nationality" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div>
+            <label for="f_age" class="block text-sm font-bold text-slate-700 mb-1">年齢</label>
+            <input type="text" name="age" id="f_age" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <!--div>
+            <label for="f_gender" class="block text-sm font-bold text-slate-700 mb-1">性別</label>
+            <input type="text" name="gender" id="f_gender" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div-->
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-2">性別</label>
+            <div class="flex gap-4">
+              <label class="flex items-center"><input type="radio" name="gender" value="" class="text-emerald-600 focus:ring-emerald-500 mr-2"> なし</label>
+              <label class="flex items-center"><input type="radio" name="gender" value="男性" class="text-emerald-600 focus:ring-emerald-500 mr-2"> 男性</label>
+              <label class="flex items-center"><input type="radio" name="gender" value="女性" class="text-emerald-600 focus:ring-emerald-500 mr-2"> 女性</label>
+            </div>
+          </div>
+          <div class="md:col-span-2">
+            <label for="f_skillsheet" class="block text-sm font-bold text-slate-700 mb-1">スキルシートURL <span class="text-red-500">*</span></label>
+            <input type="url" required name="skillsheet" id="f_skillsheet" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div>
+            <label for="f_area" class="block text-sm font-bold text-slate-700 mb-1">最寄駅</label>
+            <input type="text" name="area" id="f_area" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div>
+            <label for="f_experience_years" class="block text-sm font-bold text-slate-700 mb-1">経験年数</label>
+            <input type="text" name="experience_years" id="f_experience_years" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+
+          <!-- 区切り線 -->
+          <div class="md:col-span-2 border-b border-slate-400 my-2"></div>
+
+          <div class="md:col-span-2">
+            <label for="f_period" class="block text-sm font-bold text-slate-700 mb-1">稼働開始時期 <span class="text-red-500">*</span></label>
+            <input type="text" required name="period" id="f_period" placeholder="即日～/ 8月～" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div class="md:col-span-2">
+            <label for="f_belong" class="block text-sm font-bold text-slate-700 mb-1">所属 <span class="text-red-500">*</span></label>
+            <input type="text" required name="belong" id="f_belong" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div>
+            <label for="f_price" class="block text-sm font-bold text-slate-700 mb-1">単価 <span class="text-red-500">*</span></label>
+            <input type="text" required name="price" id="f_price" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div>
+            <label for="f_base_hours" class="block text-sm font-bold text-slate-700 mb-1">精算幅</label>
+            <input type="text" name="base_hours" id="f_base_hours" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          </div>
+          <div class="md:col-span-2">
+            <label for="f_hope" class="block text-sm font-bold text-slate-700 mb-1">希望</label>
+            <textarea name="hope" id="f_hope" rows="3" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2"></textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label for="f_license" class="block text-sm font-bold text-slate-700 mb-1">資格</label>
+            <textarea name="license" id="f_license" rows="3" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2"></textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label for="f_skill" class="block text-sm font-bold text-slate-700 mb-1">スキル <span class="text-red-500">*</span></label>
+            <textarea required name="skill" id="f_skill" rows="5" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2"></textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label for="f_note" class="block text-sm font-bold text-slate-700 mb-1">備考</label>
+            <textarea name="note" id="f_note" rows="3" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2"></textarea>
+          </div>
+        </div>
+
+        <div class="mt-8 pt-4 border-t border-slate-100 flex gap-4">
+          <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold shadow-sm transition">保存</button>
+          <button type="button" id="closeBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-lg font-bold transition">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="sourceModal" class="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-3">
+    <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 id="sourceModalTitle" class="text-lg font-bold text-slate-800">元の情報</h2>
+        <button id="sourceCloseX" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <div id="sourceInfoBody" class="p-5 overflow-y-auto"></div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; font-weight: 700; color: rgb(100 116 139); }
+  .field span { color: rgb(244 63 94); margin-left: 0.15rem; }
+  .field input, .field select, .field textarea { width: 100%; border: 1px solid rgb(226 232 240); border-radius: 0.5rem; background: rgb(248 250 252); padding: 0.625rem 0.75rem; font-size: 0.875rem; font-weight: 500; color: rgb(30 41 59); outline: none; }
+  .field input:focus, .field select:focus, .field textarea:focus { box-shadow: 0 0 0 2px rgb(16 185 129); background: white; }
+</style>
+
+<script is:inline>
+  const apiGet = '/api/get_engineer.php';
+  const apiSave = '/api/save_engineer.php';
+  const fields = ['id','name','age','gender','nationality','experience_years','skillsheet','period','area','belong','price','base_hours','hope','license','skill','note','received','company_id','contact_id','contact_method','original','status'];
+
+  const statusLabel = { draft: '下書き', active: '営業中', closed: '終了' };
+  const statusClass = { draft: 'bg-slate-100 text-slate-600', active: 'bg-emerald-100 text-emerald-700', closed: 'bg-gray-100 text-gray-500' };
+
+  async function loadList() {
+    const body = document.getElementById('listBody');
+    body.innerHTML = '<tr><td colspan="5" class="px-4 py-12 text-center text-slate-400">読み込み中...</td></tr>';
+    const q = document.getElementById('searchInput').value.trim();
+    const st = document.getElementById('statusFilter').value;
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (st) params.set('status', st);
+    const res = await fetch(`${apiGet}?${params.toString()}`, { credentials: 'include' });
+    const result = await res.json();
+    if (result.status !== 'success') throw new Error(result.message || '読み込みエラー');
+    const rows = result.data || [];
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="5" class="px-4 py-12 text-center text-slate-400">登録がありません</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(row => {
+      const isBroadcastable = row.status === 'active';
+      return `
+      <tr class="hover:bg-emerald-50/50">
+        <td class="px-4 py-4 min-w-[240px]">
+          <div class="font-bold text-slate-800">${esc(row.name)}</div>
+          <div class="text-xs text-slate-500 mt-1">${esc([row.age, row.gender, row.nationality].filter(Boolean).join(' / '))}</div>
+        </td>
+        <td class="px-4 py-4 text-sm text-slate-600 min-w-[260px]">
+          <div>${esc(row.period)} / ${esc(row.area || '---')}</div>
+          <div class="text-xs text-slate-400 mt-1">${esc(row.belong)} / ${esc(row.price)} ${row.base_hours ? ' / ' + esc(row.base_hours) : ''}</div>
+          <div class="text-xs text-slate-500 mt-1">${esc(row.skill || '').slice(0, 80)}</div>
+        </td>
+        <td class="px-4 py-4 text-sm text-slate-600 min-w-[180px]">
+          <div>${esc(row.company_name || '未紐づけ')}</div>
+          <div class="text-xs text-slate-400 mt-1">${esc(row.contact_name || '')} ${esc(row.contact_method || '')}</div>
+        </td>
+        <td class="px-4 py-4">
+          <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass[row.status] || statusClass.draft}">${statusLabel[row.status] || row.status}</span>
+          <div class="text-[11px] text-slate-400 mt-2">${esc(row.received || '')}</div>
+        </td>
+        <td class="px-4 py-4 text-right">
+          <div class="flex flex-wrap justify-end gap-2">
+            ${isBroadcastable ? `<a href="/sendmail/broadcast?id=${row.id}&type=engineer" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">配信</a>` : `<button type="button" class="px-3 py-1.5 bg-slate-200 text-slate-400 rounded-lg text-xs font-bold cursor-not-allowed" disabled>配信</button>`}
+            <button class="sourceBtn px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:border-emerald-400" data-id="${row.id}" data-received="${esc(row.received || '')}" data-company-name="${esc(row.company_name || '')}" data-contact-name="${esc(row.contact_name || '')}" data-contact-method="${esc(row.contact_method || '')}" data-original="${esc(row.original || '')}">元の情報</button>
+            <button class="editBtn px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:border-emerald-400" data-id="${row.id}">編集</button>
+          </div>
+        </td>
+      </tr>
+    `;
+    }).join('');
+    document.querySelectorAll('.editBtn').forEach(btn => btn.addEventListener('click', () => openModal(btn.dataset.id)));
+    document.querySelectorAll('.sourceBtn').forEach(btn => btn.addEventListener('click', () => openSourceModal(btn.dataset)));
+  }
+
+  async function openModal(id = null) {
+    document.getElementById('entryForm').reset();
+    document.getElementById('f_id').value = '';
+
+    // ラジオボタンの初期化（デフォルトを下書きに）
+    document.querySelector('input[name="status"][value="draft"]').checked = true;
+    document.querySelector('input[name="gender"][value=""]').checked = true;
+
+    document.getElementById('f_contact_method').value = 'メール';
+    document.getElementById('modalTitle').textContent = id ? 'エンジニア編集 ' : 'エンジニア登録';
+    
+    if (id) {
+      const res = await fetch(`${apiGet}?id=${id}`, { credentials: 'include' });
+      const result = await res.json();
+      if (result.status !== 'success') return alert(result.message || '読み込みエラー');
+      fields.forEach(key => {
+        if (key === 'status' || key === 'gender') {
+          // ラジオボタンへの値セット
+          const radio = document.querySelector(`input[name="${key}"][value="${result.data[key] || ''}"]`);
+          if (radio) radio.checked = true;
+        } else {
+          const el = document.getElementById(`f_${key}`);
+          if (el) el.value = result.data[key] ?? '';
+        }
+      });
+    }
+    document.getElementById('modal').classList.remove('hidden');
+    document.getElementById('modal').classList.add('flex');
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.add('hidden');
+    document.getElementById('modal').classList.remove('flex');
+  }
+
+  function openSourceModal(data) {
+    document.getElementById('sourceModalTitle').textContent = '元の情報';
+    document.getElementById('sourceInfoBody').innerHTML = `
+      <div class="space-y-4 text-sm text-slate-700">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">情報受領日</p>
+          <p class="mt-1">${esc(data.received || '')}</p>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">会社名</p>
+          <p class="mt-1">${esc(data.companyName || '')}</p>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">担当者名</p>
+          <p class="mt-1">${esc(data.contactName || '')}</p>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">連絡手段</p>
+          <p class="mt-1">${esc(data.contactMethod || '')}</p>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">元のエンジニア情報</p>
+          <div class="mt-2 whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3">${esc(data.original || '')}</div>
+        </div>
+      </div>
+    `;
+    document.getElementById('sourceModal').classList.remove('hidden');
+    document.getElementById('sourceModal').classList.add('flex');
+  }
+
+  function closeSourceModal() {
+    document.getElementById('sourceModal').classList.add('hidden');
+    document.getElementById('sourceModal').classList.remove('flex');
+  }
+
+  document.getElementById('entryForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const res = await fetch(apiSave, { method: 'POST', body: new FormData(e.target), credentials: 'include' });
+    const result = await res.json();
+    if (result.status !== 'success') return alert(result.message || '保存エラー');
+    closeModal();
+    loadList();
+  });
+
+  document.getElementById('newBtn').addEventListener('click', () => openModal());
+  document.getElementById('closeBtn').addEventListener('click', closeModal);
+  document.getElementById('closeX').addEventListener('click', closeModal);
+  document.getElementById('sourceCloseX').addEventListener('click', closeSourceModal);
+  document.getElementById('sourceModal').addEventListener('click', (e) => {
+    if (e.target.id === 'sourceModal') closeSourceModal();
+  });
+  document.getElementById('searchBtn').addEventListener('click', loadList);
+  document.getElementById('statusFilter').addEventListener('change', loadList);
+  document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadList(); });
+
+  function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  loadList().catch(e => {
+    console.error(e);
+    document.getElementById('listBody').innerHTML = '<tr><td colspan="5" class="px-4 py-12 text-center text-red-500">読み込みエラー</td></tr>';
+  });
+</script>

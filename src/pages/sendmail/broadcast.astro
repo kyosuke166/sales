@@ -1,0 +1,363 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const currentUrl = new URL(Astro.request.url);
+const searchType = currentUrl.searchParams.get('type') ?? Astro.url.searchParams.get('type') ?? 'anken';
+const isEngineer = searchType === 'engineer';
+const title = isEngineer ? 'エンジニア配信メール作成' : '案件配信メール作成';
+const typeLabel = isEngineer ? 'エンジニア' : '案件';
+---
+
+<Layout title={`${title} | メール配信管理`}>
+  <main class="max-w-[1100px] mx-auto px-4 md:px-6 py-8">
+    <a href="/sendmail" class="text-sm font-bold text-cyan-600 hover:text-cyan-700">
+      <i class="fa-solid fa-chevron-left mr-1"></i> メール配信管理へ戻る
+    </a>
+
+    <div class="mt-6 bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <div class="flex items-center gap-3 mb-8">
+        <div class="w-11 h-11 rounded-xl bg-cyan-600 text-white flex items-center justify-center">
+          <i class="fa-solid fa-paper-plane"></i>
+        </div>
+        <h1 id="pageTitle" class="text-2xl font-bold text-slate-800">読み込み中...</h1>
+      </div>
+
+      <div class="relative mb-8 p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <p class="text-[10px] uppercase font-bold text-slate-400">情報受領日</p>
+            <p id="infoReceived" class="font-bold text-slate-700">読み込み中...</p>
+          </div>
+          <div>
+            <p class="text-[10px] uppercase font-bold text-slate-400">情報元会社名</p>
+            <p id="infoCompany" class="font-bold text-slate-700">読み込み中...</p>
+          </div>
+          <div>
+            <p class="text-[10px] uppercase font-bold text-slate-400">情報元担当者</p>
+            <p id="infoContact" class="font-bold text-slate-700">読み込み中...</p>
+          </div>
+          <div>
+            <p class="text-[10px] uppercase font-bold text-slate-400">連絡手段</p>
+            <p id="infoMethod" class="font-bold text-slate-700">読み込み中...</p>
+          </div>
+        </div>
+
+        <button id="detailToggle" type="button" class="absolute top-4 right-4 text-xs font-bold text-cyan-600 hover:text-cyan-700 underline">
+          <i class="fa-solid fa-up-right-from-square mr-1"></i>詳細
+        </button>
+      </div>
+
+      <div id="detailPanel" class="hidden mb-8 rounded-xl border border-slate-200 bg-white p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-slate-700">元情報</h2>
+          <span class="text-xs text-slate-400">DBから取得した原文</span>
+        </div>
+        <div id="detailBody" class="whitespace-pre-wrap text-sm text-slate-600 leading-7"></div>
+      </div>
+
+      <form action="/api/send-mail" method="POST" class="space-y-6">
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">件名</label>
+          <input id="subjectInput" type="text" name="subject" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" required />
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">前置き文</label>
+          <textarea id="introInput" name="intro" rows="4" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" placeholder="〇〇の案件をご紹介します。" required></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">本文</label>
+          <div class="mb-2 text-sm text-slate-500">-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-</div>
+          <textarea id="bodyInput" name="body" rows="30" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" placeholder="案件情報などを整形して入力" required></textarea>
+          <div class="mt-2 text-sm text-slate-500">-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-</div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">署名</label>
+          <textarea id="signatureInput" name="signature" rows="15" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" required></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">宛先</label>
+          <textarea name="sendto" rows="10" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" required></textarea>
+        </div>
+
+        <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+          <button type="button" class="px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition">
+            下書き保存
+          </button>
+          <button type="submit" class="px-6 py-2.5 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition shadow-sm">
+            配信内容を確認する
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</Layout>
+
+<script is:inline>
+  const params = new URLSearchParams(window.location.search);
+  const type = params.get('type') ?? 'anken';
+  const id = params.get('id') ?? '';
+  const isEngineer = type === 'engineer';
+  const titleText = isEngineer ? 'エンジニア配信メール作成' : '案件配信メール作成';
+  document.title = `${titleText} | メール配信管理`; // ブラウザのタブタイトル
+  document.getElementById('pageTitle').textContent = titleText; // h1タグの見出し
+  const typeLabel = isEngineer ? 'エンジニア' : '案件';
+  const apiUrl = isEngineer ? '/api/get_engineer.php' : '/api/get_anken.php';
+  const subjectPrefix = isEngineer ? '【SBT◆技術者】' : '【SBT◆案件】';
+
+  const infoReceived = document.getElementById('infoReceived');
+  const infoCompany = document.getElementById('infoCompany');
+  const infoContact = document.getElementById('infoContact');
+  const infoMethod = document.getElementById('infoMethod');
+  const detailBody = document.getElementById('detailBody');
+  const detailPanel = document.getElementById('detailPanel');
+  const detailToggle = document.getElementById('detailToggle');
+  const subjectInput = document.getElementById('subjectInput');
+  const introInput = document.getElementById('introInput');
+  const bodyInput = document.getElementById('bodyInput');
+  const signatureInput = document.getElementById('signatureInput');
+
+  function formatDate(value) {
+    if (!value) return '未設定';
+    const normalized = String(value).replace(/\s+/, '');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      return normalized.replace(/-/g, '/');
+    }
+    return normalized;
+  }
+
+  function escapeText(value) {
+    return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+  }
+
+  function normalizeValue(value) {
+    return String(value ?? '').trim();
+  }
+
+  function formatSkillLines(value, withBullet = true) {
+    const text = normalizeValue(value);
+    if (!text) return [];
+    return text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const cleaned = line.replace(/^・\s*/, '');
+        return withBullet ? `【　】${cleaned}` : cleaned;
+      });
+  }
+
+  function buildSubject(row) {
+    if (isEngineer) {
+      const name = normalizeValue(row.name) || '技術者名';
+      const age = normalizeValue(row.age);
+      const experienceYears = normalizeValue(row.experience_years);
+      const price = normalizeValue(row.price) || '価格未設定';
+      const period = normalizeValue(row.period) || '期間未設定';
+      const nationality = normalizeValue(row.nationality);
+
+      const subjectParts = ['●●エンジニア'];
+      const detailParts = [];
+
+      if (age) detailParts.push(age);
+      if (experienceYears) detailParts.push(experienceYears);
+      if (detailParts.length) subjectParts.push(detailParts.join('/'));
+
+      subjectParts.push(price, period);
+
+      if (nationality && nationality !== '日本') {
+        subjectParts.push(`※${nationality}`);
+      }
+
+      return `${subjectPrefix}${subjectParts.join(' ◆ ')}`;
+    }
+
+    const area = normalizeValue(row.area) || 'エリア未設定';
+    const price = normalizeValue(row.price) || '価格未設定';
+    const period = normalizeValue(row.period) || '期間未設定';
+    return `${subjectPrefix}${row.name || '案件名'}@${area} ◆ ${price} ◆ ${period}`;
+  }
+
+  function buildIntro(row) {
+    if (isEngineer) {
+      return [
+        'エンジニアをご紹介します。',
+        '活躍できる案件がありましたら、ご紹介いただけますと幸いです。',
+      ].join('\n');
+    }
+
+    return [
+      '案件をご紹介します。',
+      '下記の案件にご対応可能な技術者がいらっしゃいましたら',
+      'ご紹介いただけますと助かります。',
+      'ご提案の際は、スキル要件の【○/△/✕】と最新の並行状況をいただけますと幸いです。'
+    ].join('\n');
+  }
+
+  function buildBody(row) {
+    const lines = [];
+
+    if (isEngineer) {
+      const skillsheetUrl = row.skillsheet
+        ? (String(row.skillsheet).startsWith('http') ? row.skillsheet : `https://docs.google.com/spreadsheets/d/${row.skillsheet}`)
+        : '---';
+
+      const age = normalizeValue(row.age);
+      const gender = normalizeValue(row.gender);
+      const ageGender = [age, gender].filter(Boolean).join(' / ');
+      const headingBody = ageGender ? `（${ageGender}）` : '';
+
+      const suffixParts = [];
+      const nationality = normalizeValue(row.nationality);
+      if (nationality && nationality !== '日本') {
+        suffixParts.push(`※${nationality}`);
+      }
+      const experienceYears = normalizeValue(row.experience_years);
+      if (experienceYears) {
+        suffixParts.push(`※経験${experienceYears}`);
+      }
+
+      const headingSuffix = suffixParts.length ? ` ${suffixParts.join('、')}` : '';
+      lines.push(`■${row.name || '技術者名'}${headingBody}${headingSuffix}`);
+      lines.push(skillsheetUrl);
+      lines.push('');
+
+      const engineerLines = [];
+      if (row.period) engineerLines.push(`稼働可：${row.period}`);
+      if (row.area) engineerLines.push(`最寄駅：${row.area}`);
+      if (row.belong) engineerLines.push(`所属　：${row.belong}`);
+      if (row.price) engineerLines.push(`単金　：${row.price}`);
+      if (row.base_hours) engineerLines.push(`精算幅：${row.base_hours}`);
+      if (row.hope) engineerLines.push(`希望　：${row.hope}`);
+      if (engineerLines.length) lines.push(...engineerLines);
+
+      const licenseText = normalizeValue(row.license);
+      if (licenseText) {
+        lines.push('');
+        lines.push('≪資格≫', licenseText);
+      }
+
+      const skillLines = formatSkillLines(row.skill, false);
+      if (skillLines.length) {
+        lines.push('');
+        lines.push('≪スキル≫', ...skillLines);
+      }
+
+      const noteText = normalizeValue(row.note);
+      if (noteText) {
+        lines.push('');
+        lines.push('≪備考≫', noteText);
+      }
+    } else {
+      lines.push(`■${row.name || '案件名'}`, '');
+
+      const ankenLines = [];
+      if (row.period) ankenLines.push(`参画時期：${row.period}`);
+      if (row.area) ankenLines.push(`作業場所：${row.area}`);
+      if (row.work_time) ankenLines.push(`就業時間：${row.work_time}`);
+      if (row.recruit) ankenLines.push(`募集人数：${row.recruit}`);
+      if (row.interview) ankenLines.push(`面談　　：${row.interview}`);
+      if (row.price) ankenLines.push(`単価　　：${row.price}`);
+      if (row.base_hours) ankenLines.push(`精算幅　：${row.base_hours}`);
+      if (row.note) {
+        ankenLines.push(`備考　　：${row.note}`);
+      } else {
+        ankenLines.push('備考　　：外国籍不可');
+      }
+      if (ankenLines.length) lines.push(...ankenLines);
+
+      const overviewText = normalizeValue(row.overview);
+      if (overviewText) {
+        lines.push('', '≪案件概要≫', overviewText);
+      }
+
+      const requiredSkills = formatSkillLines(row.skill_must);
+      if (requiredSkills.length) {
+        lines.push('', '≪必須スキル≫', ...requiredSkills);
+      }
+
+      const optionalSkills = formatSkillLines(row.skill_want);
+      if (optionalSkills.length) {
+        lines.push('', '≪尚可スキル≫', ...optionalSkills);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  function buildSignature(row) {
+    const footer = [
+      '以上、何卒よろしくお願いいたします。',
+      '',
+      '_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/',
+      '　株式会社ＳＢＴ',
+      '　　　URL ： https://sbt-inc.co.jp',
+      '　　　TEL ： 03-6912-8306',
+      '　　　直通： 090-7755-0100 (柴田)',
+      '　　　LINE： https://line.me/ti/p/bn7frp0fRL',
+      '_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/',
+      '',
+      '▼協賛交流会(9月)',
+      'https://www.kokuchpro.com/event/146432875406b42c12aa8b959394f381/',
+      '',
+      '▼情報交換LINE-Gr.',
+      'https://tinyurl.com/yts48uuu'
+    ];
+
+    return footer.join('\n');
+  }
+
+  function renderData(row) {
+    infoReceived.textContent = formatDate(row.received || '');
+    infoCompany.textContent = row.company_name || '未紐づけ';
+    infoContact.textContent = row.contact_name || '未紐づけ';
+    infoMethod.textContent = row.contact_method || '未設定';
+    detailBody.textContent = row.original || '元情報はありません。';
+
+    subjectInput.value = buildSubject(row);
+    introInput.value = buildIntro(row);
+    bodyInput.value = buildBody(row);
+    signatureInput.value = buildSignature(row);
+  }
+
+  async function loadData() {
+    if (!id) {
+      subjectInput.value = `${subjectPrefix}${typeLabel}`;
+      introInput.value = `${typeLabel}の情報をご紹介します。`;
+      bodyInput.value = `${typeLabel}の情報を取得できるようにしてください。`;
+      infoReceived.textContent = '未設定';
+      infoCompany.textContent = '未設定';
+      infoContact.textContent = '未設定';
+      infoMethod.textContent = '未設定';
+      detailBody.textContent = '対象IDが指定されていません。';
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}?id=${id}`, { credentials: 'include' });
+      const result = await response.json();
+      if (result.status !== 'success') throw new Error(result.message || 'データ取得に失敗しました。');
+      renderData(result.data || {});
+    } catch (error) {
+      console.error(error);
+      infoReceived.textContent = '取得エラー';
+      infoCompany.textContent = '取得エラー';
+      infoContact.textContent = '取得エラー';
+      infoMethod.textContent = '取得エラー';
+      detailBody.textContent = error.message || '読み込み中にエラーが発生しました。';
+    }
+  }
+
+  detailToggle.addEventListener('click', () => {
+    detailPanel.classList.toggle('hidden');
+    const isHidden = detailPanel.classList.contains('hidden');
+    detailToggle.innerHTML = isHidden
+      ? '<i class="fa-solid fa-up-right-from-square mr-1"></i>詳細'
+      : '<i class="fa-solid fa-chevron-up mr-1"></i>閉じる';
+  });
+
+  loadData();
+</script>
