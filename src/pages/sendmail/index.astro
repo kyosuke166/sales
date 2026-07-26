@@ -1,141 +1,185 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-
-const menuItems = [
-  {
-    title: '案件情報',
-    description: '配信する案件情報の登録・一覧・編集',
-    href: '/sendmail/anken',
-    icon: 'fa-briefcase',
-    color: 'bg-blue-600',
-    active: true,
-  },
-  {
-    title: 'エンジニア情報',
-    description: '配信するエンジニア情報の登録・一覧・編集',
-    href: '/sendmail/engineer',
-    icon: 'fa-user-tie',
-    color: 'bg-emerald-600',
-    active: true,
-  },
-  {
-    title: '配信履歴',
-    description: '配信履歴から確認・再配信',
-    href: '#',
-    icon: 'fa-paper-plane',
-    color: 'bg-cyan-600',
-    active: false,
-    badge: '準備中',
-  },
-];
 ---
 
 <Layout title="メール配信管理 | SBT 営業管理画面">
   <main class="max-w-[1400px] mx-auto px-4 md:px-6 py-6 md:py-8">
+    <!-- ヘッダーセクション -->
     <section class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-cyan-600 text-white flex items-center justify-center shadow-sm">
+            <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm">
               <i class="fa-solid fa-envelopes-bulk"></i>
             </div>
             <div>
-              <p class="text-xs font-bold text-cyan-600 tracking-wider uppercase">Sendmail</p>
+              <p class="text-xs font-bold text-amber-600 tracking-wider uppercase">Sendmail</p>
               <h1 class="text-2xl md:text-3xl font-bold text-slate-800">メール配信管理</h1>
             </div>
           </div>
           <p class="text-sm text-slate-500 leading-relaxed max-w-3xl">
-            案件とエンジニアの配信情報を登録し、一覧から確認してメール配信へつなげる管理画面です。
+            案件・エンジニア情報の配信、または自由な内容のフリーメール作成・過去の配信履歴の確認を行います。
           </p>
         </div>
 
         <div class="flex items-center gap-2 text-xs text-slate-500 bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm w-fit">
           <i class="fa-solid fa-database text-cyan-600"></i>
-          <span class="font-bold">anken / engineer</span>
+          <span class="font-bold">anken / engineer / sendmail_history</span>
         </div>
       </div>
     </section>
 
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-8">
-      {menuItems.map((item) => (
-        <a
-          href={item.active ? item.href : '#'}
-          class={`group bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-all duration-300 ${item.active ? 'hover:border-cyan-400 hover:shadow-lg hover:-translate-y-0.5' : 'opacity-70 cursor-not-allowed'}`}
-          aria-disabled={item.active ? 'false' : 'true'}
-        >
-          <div class="flex items-start justify-between gap-4 mb-5">
-            <div class={`${item.color} w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform`}>
-              <i class={`fa-solid ${item.icon} text-xl`}></i>
-            </div>
-            <div class="flex items-center gap-2">
-              {item.badge && (
-                <span class="px-2 py-1 text-[10px] font-bold tracking-wider rounded-md bg-slate-100 text-slate-500">
-                  {item.badge}
-                </span>
-              )}
-              {item.active && (
-                <i class="fa-solid fa-chevron-right text-slate-300 text-xs group-hover:text-cyan-500 group-hover:translate-x-1 transition-all"></i>
-              )}
-            </div>
+    <!-- 上部：3カラムカード（ヘッダーの青・赤・緑ドットとカラー同期） -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <!-- 案件情報（青ドット同期） -->
+      <a
+        href="/sendmail/anken"
+        class="group bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:border-blue-400 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+      >
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+            <i class="fa-solid fa-briefcase text-xl"></i>
           </div>
+          <i class="fa-solid fa-chevron-right text-slate-300 text-xs group-hover:text-blue-500 group-hover:translate-x-1 transition-all self-center"></i>
+        </div>
+        <h2 class="text-lg font-bold text-slate-800 group-hover:text-blue-700 transition-colors mb-1">案件情報</h2>
+        <p class="text-sm text-slate-500">案件情報の登録・一覧・編集、および個別配信メールの作成を行います。</p>
+      </a>
 
-          <div class="space-y-2">
-            <div class="flex items-center gap-2">
-              <h2 class="text-lg font-bold text-slate-800 group-hover:text-cyan-700 transition-colors">{item.title}</h2>
-              <span class="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-100 rounded px-2 py-0.5">{item.stats}</span>
-            </div>
-            <p class="text-sm text-slate-500 leading-relaxed">{item.description}</p>
+      <!-- エンジニア情報（赤ドット同期） -->
+      <a
+        href="/sendmail/engineer"
+        class="group bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:border-rose-400 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+      >
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="bg-rose-500 w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+            <i class="fa-solid fa-user-tie text-xl"></i>
           </div>
-        </a>
-      ))}
+          <i class="fa-solid fa-chevron-right text-slate-300 text-xs group-hover:text-rose-500 group-hover:translate-x-1 transition-all self-center"></i>
+        </div>
+        <h2 class="text-lg font-bold text-slate-800 group-hover:text-rose-700 transition-colors mb-1">エンジニア情報</h2>
+        <p class="text-sm text-slate-500">エンジニア情報の登録・一覧・編集、および個別配信メールの作成を行います。</p>
+      </a>
+
+      <!-- フリーメール作成（緑ドット同期） -->
+      <a
+        href="/sendmail/broadcast?type=free"
+        class="group bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:border-emerald-400 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+      >
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="bg-emerald-500 w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+            <i class="fa-solid fa-pen-to-square text-xl"></i>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-300 text-xs group-hover:text-emerald-500 group-hover:translate-x-1 transition-all self-center"></i>
+        </div>
+        <h2 class="text-lg font-bold text-slate-800 group-hover:text-emerald-700 transition-colors mb-1">フリーメール作成</h2>
+        <p class="text-sm text-slate-500">案件やエンジニアに紐づかない、自由な内容のダイレクトメールを作成・配信します。</p>
+      </a>
     </section>
 
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-            <i class="fa-solid fa-list-check"></i>
+    <!-- 下部：配信履歴一覧セクション -->
+    <section class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-sm">
+            <i class="fa-solid fa-paper-plane text-sm"></i>
           </div>
-          <h2 class="text-base font-bold text-slate-800">登録する情報</h2>
-        </div>
-        <div class="space-y-3 text-sm text-slate-600">
-          <div class="flex items-start gap-3">
-            <span class="mt-1 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></span>
-            <p>案件は案件名、期間、エリア、単金、スキル、元情報を中心に管理します。</p>
-          </div>
-          <div class="flex items-start gap-3">
-            <span class="mt-1 w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
-            <p>エンジニアはイニシャル、稼働時期、所属、単価、スキルシート、スキルを中心に管理します。</p>
-          </div>
-          <div class="flex items-start gap-3">
-            <span class="mt-1 w-2 h-2 rounded-full bg-cyan-500 flex-shrink-0"></span>
-            <p>情報元の会社・担当者はCRMに紐づく場合だけ選択し、紐づかない情報は元情報の冒頭に残します。</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-800">配信履歴</h2>
         </div>
       </div>
 
-      <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-            <i class="fa-solid fa-signal"></i>
-          </div>
-          <h2 class="text-base font-bold text-slate-800">状態</h2>
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">draft</p>
-            <p class="text-sm font-bold text-slate-700">下書き</p>
-          </div>
-          <div class="rounded-lg border border-cyan-100 bg-cyan-50 p-3">
-            <p class="text-[10px] font-bold text-cyan-500 uppercase mb-1">active</p>
-            <p class="text-sm font-bold text-slate-700">募集中 / 営業中</p>
-          </div>
-          <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">closed</p>
-            <p class="text-sm font-bold text-slate-700">終了</p>
-          </div>
-        </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-200 text-xs font-bold text-slate-400 uppercase bg-slate-50">
+              <th class="py-3 px-4">配信日時</th>
+              <th class="py-3 px-4">状態</th>
+              <th class="py-3 px-4">種別</th>
+              <th class="py-3 px-4">件名</th>
+              <th class="py-3 px-4">操作</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="text-sm text-slate-600 divide-y divide-slate-100">
+            <tr>
+              <td colspan="5" class="py-6 text-center text-slate-400">読み込み中...</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
   </main>
 </Layout>
+
+<script is:inline>
+  async function loadHistory() {
+    try {
+      const res = await fetch('/api/get_sendmail_history.php', { credentials: 'include' });
+      const json = await res.json();
+      const tbody = document.getElementById('historyTableBody');
+      
+      if (json.status !== 'success' || !json.data || json.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-slate-400">配信履歴はありません。</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = json.data.map(item => {
+        // ▼ 1. 種別バッジの判定
+        let typeBadge = '<span class="px-2 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-600 rounded">フリー</span>';
+        if (item.engineer_id) {
+          typeBadge = '<span class="px-2 py-0.5 text-xs font-bold bg-rose-50 text-rose-600 rounded">エンジニア</span>';
+        } else if (item.anken_id) {
+          typeBadge = '<span class="px-2 py-0.5 text-xs font-bold bg-blue-50 text-blue-600 rounded">案件</span>';
+        }
+
+        // ▼ 2. 状態（ステータス）バッジと、ボタンテキストの判定
+        let statusBadge = '';
+        let actionBtn = '';
+        const targetUrl = `/sendmail/broadcast?history_id=${item.id}`;
+
+        switch (item.status) {
+          case 'draft':
+            // 下書き：黄色系（作業のやり残し・注意喚起）
+            statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-amber-50 text-amber-600 rounded border border-amber-200">下書き</span>';
+            actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded transition shadow-sm"><i class="fa-solid fa-pen mr-1 text-slate-400"></i>再開する</a>`;
+            break;
+          case 'sent':
+            // 送信済：グレー系（完了した過去のデータとして視覚的なノイズを減らす）
+            statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-slate-100 text-slate-500 rounded border border-slate-200">送信済</span>';
+            actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded transition border border-slate-200">確認・再配信</a>`;
+            break;
+          case 'scheduled':
+            // 予約中：緑系（正常にスケジュールされて待機している安心感）
+            statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-emerald-50 text-emerald-600 rounded border border-emerald-200">予約中</span>';
+            actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-white border border-emerald-200 hover:bg-emerald-50 text-emerald-700 text-xs font-bold rounded transition">確認・変更</a>`;
+            break;
+          case 'error':
+            // エラー：赤系＆3文字（直感的な警告）
+            statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-rose-50 text-rose-600 rounded border border-rose-200">エラー</span>';
+            actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded transition">詳細・再送</a>`;
+            break;
+          default:
+            statusBadge = `<span class="px-2 py-1 text-[10px] font-bold bg-slate-50 text-slate-400 rounded">${item.status || '---'}</span>`;
+            actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded transition">詳細</a>`;
+        }
+
+        // ▼ 3. 行の出力（状態カラムを追加）
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4 whitespace-nowrap text-slate-500 text-xs">${item.senddate}</td>
+            <td class="py-3 px-4 whitespace-nowrap">${statusBadge}</td>
+            <td class="py-3 px-4 whitespace-nowrap">${typeBadge}</td>
+            <td class="py-3 px-4 font-bold text-slate-800 max-w-md truncate">${item.subject}</td>
+            <td class="py-3 px-4 whitespace-nowrap">
+              ${actionBtn}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (e) {
+      console.error(e);
+      document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="4" class="py-6 text-center text-red-400">履歴の取得に失敗しました。</td></tr>';
+    }
+  }
+
+  loadHistory();
+</script>

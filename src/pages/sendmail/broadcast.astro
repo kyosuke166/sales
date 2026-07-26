@@ -2,10 +2,19 @@
 import Layout from '../../layouts/Layout.astro';
 
 const currentUrl = new URL(Astro.request.url);
-const searchType = currentUrl.searchParams.get('type') ?? Astro.url.searchParams.get('type') ?? 'anken';
+const historyId = currentUrl.searchParams.get('history_id');
+const searchType = currentUrl.searchParams.get('type') ?? 'anken';
+const isFree = searchType === 'free';
 const isEngineer = searchType === 'engineer';
-const title = isEngineer ? 'エンジニア配信メール作成' : '案件配信メール作成';
-const typeLabel = isEngineer ? 'エンジニア' : '案件';
+
+let title = '案件配信メール作成';
+if (historyId) {
+  title = '配信履歴の確認・再配信';
+} else if (isFree) {
+  title = 'フリーメール作成';
+} else if (isEngineer) {
+  title = 'エンジニア配信メール作成';
+}
 ---
 
 <Layout title={`${title} | メール配信管理`}>
@@ -16,28 +25,32 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
 
     <div class="mt-6 bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
       <div class="flex items-center gap-3 mb-8">
-        <div class="w-11 h-11 rounded-xl bg-cyan-600 text-white flex items-center justify-center">
+        <div id="pageIcon" class="w-11 h-11 rounded-xl bg-cyan-600 text-white flex items-center justify-center">
           <i class="fa-solid fa-paper-plane"></i>
         </div>
-        <h1 id="pageTitle" class="text-2xl font-bold text-slate-800">読み込み中...</h1>
+        <div>
+          <p id="pageSubTitle" class="text-xs font-bold text-cyan-600 tracking-wider uppercase"></p>
+          <h1 id="pageTitle" class="text-2xl font-bold text-slate-800">読み込み中...</h1>
+        </div>
       </div>
 
-      <div class="relative mb-8 p-4 bg-slate-50 rounded-xl border border-slate-200">
+      <!-- メタ情報パネル（フリーメールのときは非表示にする） -->
+      <div id="metaPanel" class="relative mb-6 p-4 bg-slate-100 rounded-xl border border-slate-200">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <p class="text-[10px] uppercase font-bold text-slate-400">情報受領日</p>
+            <p class="text-[10px] uppercase font-bold text-slate-400" id="labelCol1">情報受領日</p>
             <p id="infoReceived" class="font-bold text-slate-700">読み込み中...</p>
           </div>
           <div>
-            <p class="text-[10px] uppercase font-bold text-slate-400">情報元会社名</p>
+            <p class="text-[10px] uppercase font-bold text-slate-400" id="labelCol2">情報元会社名</p>
             <p id="infoCompany" class="font-bold text-slate-700">読み込み中...</p>
           </div>
           <div>
-            <p class="text-[10px] uppercase font-bold text-slate-400">情報元担当者</p>
+            <p class="text-[10px] uppercase font-bold text-slate-400" id="labelCol3">情報元担当者</p>
             <p id="infoContact" class="font-bold text-slate-700">読み込み中...</p>
           </div>
           <div>
-            <p class="text-[10px] uppercase font-bold text-slate-400">連絡手段</p>
+            <p class="text-[10px] uppercase font-bold text-slate-400" id="labelCol4">連絡手段</p>
             <p id="infoMethod" class="font-bold text-slate-700">読み込み中...</p>
           </div>
         </div>
@@ -47,15 +60,16 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
         </button>
       </div>
 
-      <div id="detailPanel" class="hidden mb-8 rounded-xl border border-slate-200 bg-white p-4">
+      <!-- 元情報パネル（フリーメールのときは非表示にする） -->
+      <div id="detailPanel" class="hidden mb-8 rounded-xl border border-slate-200 bg-slate-100 p-4">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-bold text-slate-700">元情報</h2>
-          <span class="text-xs text-slate-400">DBから取得した原文</span>
+          <h2 class="text-sm font-bold text-slate-700" id="detailTitle">元情報</h2>
+          <span class="text-xs text-slate-400" id="detailSubTitle">DBから取得した原文</span>
         </div>
         <div id="detailBody" class="whitespace-pre-wrap text-sm text-slate-600 leading-7"></div>
       </div>
 
-      <form action="/api/send-mail" method="POST" class="space-y-6">
+      <form id="mailForm" class="space-y-6">
         <div>
           <label class="block text-sm font-bold text-slate-700 mb-2">件名</label>
           <input id="subjectInput" type="text" name="subject" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" required />
@@ -63,13 +77,13 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
 
         <div>
           <label class="block text-sm font-bold text-slate-700 mb-2">前置き文</label>
-          <textarea id="introInput" name="intro" rows="4" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" placeholder="〇〇の案件をご紹介します。" required></textarea>
+          <textarea id="introInput" name="intro" rows="4" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" placeholder="ご挨拶など" required></textarea>
         </div>
 
         <div>
           <label class="block text-sm font-bold text-slate-700 mb-2">本文</label>
           <div class="mb-2 text-sm text-slate-500">-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-</div>
-          <textarea id="bodyInput" name="body" rows="30" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" placeholder="案件情報などを整形して入力" required></textarea>
+          <textarea id="bodyInput" name="body" rows="20" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" placeholder="自由な本文を入力" required></textarea>
           <div class="mt-2 text-sm text-slate-500">-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-</div>
         </div>
 
@@ -80,13 +94,15 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
 
         <div>
           <label class="block text-sm font-bold text-slate-700 mb-2">宛先</label>
-          <textarea name="sendto" rows="10" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" required></textarea>
+          <textarea id="sendtoInput" name="sendto" rows="10" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" placeholder="メールアドレスを入力" required></textarea>
         </div>
 
         <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
-          <button type="button" class="px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition">
+          <!-- 下書き保存ボタン（idを追加、type="button"） -->
+          <button type="button" id="saveDraftBtn" class="px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition">
             下書き保存
           </button>
+          <!-- 確認ボタン（type="submit"のまま。HTML5のrequiredバリデーションを効かせるため） -->
           <button type="submit" class="px-6 py-2.5 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition shadow-sm">
             配信内容を確認する
           </button>
@@ -94,31 +110,65 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
       </form>
     </div>
   </main>
+
+  <!-- ▼ 確認用モーダル (新規追加) ▼ -->
+  <div id="confirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] z-[200] hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+              <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                  <i class="fa-solid fa-paper-plane text-cyan-600"></i> 送信内容の確認
+              </h3>
+              <button type="button" onclick="closeConfirmModal()" class="text-slate-400 hover:text-slate-600 transition">
+                  <i class="fa-solid fa-xmark text-xl"></i>
+              </button>
+          </div>
+          <div class="p-6 overflow-y-auto bg-slate-100 flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <!-- 左側：メールプレビュー -->
+              <div class="md:col-span-2 flex flex-col gap-4">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 mb-1">件名</p>
+                    <p id="previewSubject" class="font-bold text-slate-800"></p>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex-1">
+                    <p class="text-[10px] font-bold text-slate-400 mb-2">本文</p>
+                    <div id="previewBody" class="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-mono"></div>
+                </div>
+              </div>
+              <!-- 右側：宛先プレビュー -->
+              <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm h-fit">
+                  <p class="text-[10px] font-bold text-slate-400 mb-1">宛先</p>
+                  <p id="previewToCount" class="text-sm font-bold text-slate-700 mb-3"></p>
+                  <div id="previewTo" class="whitespace-pre text-[11px] text-slate-500 h-64 overflow-auto bg-slate-50 p-3 rounded-lg border border-slate-100 font-mono"></div>
+              </div>
+          </div>
+          <div class="px-6 py-4 border-t border-slate-200 bg-white flex justify-end gap-3">
+              <button type="button" onclick="closeConfirmModal()" class="px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition">
+                  戻って修正する
+              </button>
+              <button type="button" id="executeSendBtn" class="px-8 py-2.5 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition shadow-sm flex items-center gap-2">
+                  <i class="fa-solid fa-paper-plane"></i> この内容で配信する
+              </button>
+          </div>
+      </div>
+  </div>
 </Layout>
 
 <script is:inline>
   const params = new URLSearchParams(window.location.search);
+  const historyId = params.get('history_id');
   const type = params.get('type') ?? 'anken';
   const id = params.get('id') ?? '';
+  
+  const isFree = type === 'free';
   const isEngineer = type === 'engineer';
-  const titleText = isEngineer ? 'エンジニア配信メール作成' : '案件配信メール作成';
-  document.title = `${titleText} | メール配信管理`; // ブラウザのタブタイトル
-  document.getElementById('pageTitle').textContent = titleText; // h1タグの見出し
-  const typeLabel = isEngineer ? 'エンジニア' : '案件';
-  const apiUrl = isEngineer ? '/api/get_engineer.php' : '/api/get_anken.php';
   const subjectPrefix = isEngineer ? '【SBT◆技術者】' : '【SBT◆案件】';
 
-  const infoReceived = document.getElementById('infoReceived');
-  const infoCompany = document.getElementById('infoCompany');
-  const infoContact = document.getElementById('infoContact');
-  const infoMethod = document.getElementById('infoMethod');
-  const detailBody = document.getElementById('detailBody');
-  const detailPanel = document.getElementById('detailPanel');
-  const detailToggle = document.getElementById('detailToggle');
+  const metaPanel = document.getElementById('metaPanel');
   const subjectInput = document.getElementById('subjectInput');
   const introInput = document.getElementById('introInput');
   const bodyInput = document.getElementById('bodyInput');
   const signatureInput = document.getElementById('signatureInput');
+  const sendtoInput = document.getElementById('sendtoInput');
 
   function formatDate(value) {
     if (!value) return '未設定';
@@ -127,10 +177,6 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
       return normalized.replace(/-/g, '/');
     }
     return normalized;
-  }
-
-  function escapeText(value) {
-    return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
   }
 
   function normalizeValue(value) {
@@ -146,13 +192,12 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
       .filter(Boolean)
       .map((line) => {
         const cleaned = line.replace(/^・\s*/, '');
-        return withBullet ? `【　】${cleaned}` : cleaned;
+        return withBullet ? `【 】${cleaned}` : cleaned;
       });
   }
 
   function buildSubject(row) {
     if (isEngineer) {
-      const name = normalizeValue(row.name) || '技術者名';
       const age = normalizeValue(row.age);
       const experienceYears = normalizeValue(row.experience_years);
       const price = normalizeValue(row.price) || '価格未設定';
@@ -228,10 +273,10 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
       const engineerLines = [];
       if (row.period) engineerLines.push(`稼働可：${row.period}`);
       if (row.area) engineerLines.push(`最寄駅：${row.area}`);
-      if (row.belong) engineerLines.push(`所属　：${row.belong}`);
-      if (row.price) engineerLines.push(`単金　：${row.price}`);
+      if (row.belong) engineerLines.push(`所属 ：${row.belong}`);
+      if (row.price) engineerLines.push(`単金 ：${row.price}`);
       if (row.base_hours) engineerLines.push(`精算幅：${row.base_hours}`);
-      if (row.hope) engineerLines.push(`希望　：${row.hope}`);
+      if (row.hope) engineerLines.push(`希望 ：${row.hope}`);
       if (engineerLines.length) lines.push(...engineerLines);
 
       const licenseText = normalizeValue(row.license);
@@ -259,13 +304,13 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
       if (row.area) ankenLines.push(`作業場所：${row.area}`);
       if (row.work_time) ankenLines.push(`就業時間：${row.work_time}`);
       if (row.recruit) ankenLines.push(`募集人数：${row.recruit}`);
-      if (row.interview) ankenLines.push(`面談　　：${row.interview}`);
-      if (row.price) ankenLines.push(`単価　　：${row.price}`);
-      if (row.base_hours) ankenLines.push(`精算幅　：${row.base_hours}`);
+      if (row.interview) ankenLines.push(`面談  ：${row.interview}`);
+      if (row.price) ankenLines.push(`単価  ：${row.price}`);
+      if (row.base_hours) ankenLines.push(`精算幅 ：${row.base_hours}`);
       if (row.note) {
-        ankenLines.push(`備考　　：${row.note}`);
+        ankenLines.push(`備考  ：${row.note}`);
       } else {
-        ankenLines.push('備考　　：外国籍不可');
+        ankenLines.push('備考  ：外国籍不可');
       }
       if (ankenLines.length) lines.push(...ankenLines);
 
@@ -288,16 +333,14 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
     return lines.join('\n');
   }
 
-  function buildSignature(row) {
+  function buildSignature() {
     const footer = [
-      '以上、何卒よろしくお願いいたします。',
-      '',
       '_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/',
-      '　株式会社ＳＢＴ',
-      '　　　URL ： https://sbt-inc.co.jp',
-      '　　　TEL ： 03-6912-8306',
-      '　　　直通： 090-7755-0100 (柴田)',
-      '　　　LINE： https://line.me/ti/p/bn7frp0fRL',
+      ' 株式会社ＳＢＴ',
+      '   URL ： https://sbt-inc.co.jp',
+      '   TEL ： 03-6912-8306',
+      '   直通： 090-7755-0100 (柴田)',
+      '   LINE： https://line.me/ti/p/bn7frp0fRL',
       '_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/',
       '',
       '▼協賛交流会(9月)',
@@ -306,33 +349,79 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
       '▼情報交換LINE-Gr.',
       'https://tinyurl.com/yts48uuu'
     ];
-
     return footer.join('\n');
   }
 
-  function renderData(row) {
-    infoReceived.textContent = formatDate(row.received || '');
-    infoCompany.textContent = row.company_name || '未紐づけ';
-    infoContact.textContent = row.contact_name || '未紐づけ';
-    infoMethod.textContent = row.contact_method || '未設定';
-    detailBody.textContent = row.original || '元情報はありません。';
+  // 1. 履歴からの復元
+  async function loadHistoryData(hId) {
+    document.getElementById('pageSubTitle').textContent = 'History Archive';
+    document.getElementById('pageTitle').textContent = '配信履歴の確認・再配信';
 
-    subjectInput.value = buildSubject(row);
-    introInput.value = buildIntro(row);
-    bodyInput.value = buildBody(row);
-    signatureInput.value = buildSignature(row);
+    try {
+      const res = await fetch(`/api/get_sendmail_history.php?id=${hId}`, { credentials: 'include' });
+      const result = await res.json();
+      if (result.status !== 'success') throw new Error(result.message || '履歴の取得に失敗しました。');
+      
+      const row = result.data;
+      
+      if (!row.engineer_id && !row.anken_id) {
+        metaPanel.classList.add('hidden'); // フリー配信の履歴ならメタ情報非表示
+      } else {
+        // マスターと同じ情報元情報を表示する
+        document.getElementById('labelCol1').textContent = '情報受領日';
+        document.getElementById('infoReceived').textContent = formatDate(row.received || '');
+        document.getElementById('labelCol2').textContent = '情報元会社名';
+        document.getElementById('infoCompany').textContent = row.company_name || '未紐づけ';
+        document.getElementById('labelCol3').textContent = '情報元担当者';
+        document.getElementById('infoContact').textContent = row.contact_name || '未紐づけ';
+        document.getElementById('labelCol4').textContent = '連絡手段';
+        document.getElementById('infoMethod').textContent = row.contact_method || '未設定';
+        document.getElementById('detailBody').textContent = row.original || '元情報はありません。';
+      }
+
+      subjectInput.value = row.subject || '';
+      introInput.value = row.intro || '';
+      bodyInput.value = row.body || '';
+      signatureInput.value = buildSignature();
+      if (sendtoInput) sendtoInput.value = row.target || '';
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  async function loadData() {
+  // 2. フリーメール作成モード（署名以外すべて空白）
+  function loadFreeMode() {
+    document.title = 'フリーメール作成 | メール配信管理';
+    document.getElementById('pageSubTitle').textContent = 'Free Broadcast';
+    document.getElementById('pageTitle').textContent = 'フリーメール作成';
+    document.getElementById('pageIcon').className = 'w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center';
+    
+    // メタ情報パネルは不要なので隠す
+    metaPanel.classList.add('hidden');
+    document.getElementById('detailPanel').classList.add('hidden');
+
+    // 署名以外を空にする
+    subjectInput.value = '';
+    introInput.value = '';
+    bodyInput.value = '';
+    signatureInput.value = buildSignature();
+    sendtoInput.value = '';
+  }
+
+  // 3. 案件 / エンジニアからの通常マスター読込
+  async function loadMasterData() {
+    const titleText = isEngineer ? 'エンジニア配信メール作成' : '案件配信メール作成';
+    document.title = `${titleText} | メール配信管理`;
+    document.getElementById('pageSubTitle').textContent = isEngineer ? 'Engineer Broadcast' : 'Anken Broadcast';
+    document.getElementById('pageTitle').textContent = titleText;
+    document.getElementById('pageIcon').className = `w-11 h-11 rounded-xl ${isEngineer ? 'bg-rose-500' : 'bg-blue-600'} text-white flex items-center justify-center`;
+    
+    const apiUrl = isEngineer ? '/api/get_engineer.php' : '/api/get_anken.php';
+
     if (!id) {
-      subjectInput.value = `${subjectPrefix}${typeLabel}`;
-      introInput.value = `${typeLabel}の情報をご紹介します。`;
-      bodyInput.value = `${typeLabel}の情報を取得できるようにしてください。`;
-      infoReceived.textContent = '未設定';
-      infoCompany.textContent = '未設定';
-      infoContact.textContent = '未設定';
-      infoMethod.textContent = '未設定';
-      detailBody.textContent = '対象IDが指定されていません。';
+      subjectInput.value = `${subjectPrefix}${isEngineer ? 'エンジニア' : '案件'}`;
+      introInput.value = `${isEngineer ? 'エンジニア' : '案件'}の情報をご紹介します。`;
+      bodyInput.value = `${isEngineer ? 'エンジニア' : '案件'}の情報を取得できるようにしてください。`;
       return;
     }
 
@@ -340,24 +429,129 @@ const typeLabel = isEngineer ? 'エンジニア' : '案件';
       const response = await fetch(`${apiUrl}?id=${id}`, { credentials: 'include' });
       const result = await response.json();
       if (result.status !== 'success') throw new Error(result.message || 'データ取得に失敗しました。');
-      renderData(result.data || {});
+      
+      const row = result.data || {};
+      document.getElementById('infoReceived').textContent = formatDate(row.received || '');
+      document.getElementById('infoCompany').textContent = row.company_name || '未紐づけ';
+      document.getElementById('infoContact').textContent = row.contact_name || '未紐づけ';
+      document.getElementById('infoMethod').textContent = row.contact_method || '未設定';
+      document.getElementById('detailBody').textContent = row.original || '元情報はありません。';
+
+      // 件名・本文などの自動生成を復帰
+      subjectInput.value = buildSubject(row);
+      introInput.value = buildIntro(row);
+      bodyInput.value = buildBody(row);
+      signatureInput.value = buildSignature();
     } catch (error) {
       console.error(error);
-      infoReceived.textContent = '取得エラー';
-      infoCompany.textContent = '取得エラー';
-      infoContact.textContent = '取得エラー';
-      infoMethod.textContent = '取得エラー';
-      detailBody.textContent = error.message || '読み込み中にエラーが発生しました。';
     }
   }
 
-  detailToggle.addEventListener('click', () => {
+  // 初期化の振り分け
+  if (historyId) {
+    loadHistoryData(historyId);
+  } else if (isFree) {
+    loadFreeMode();
+  } else {
+    loadMasterData();
+  }
+
+  document.getElementById('detailToggle').addEventListener('click', () => {
+    const detailPanel = document.getElementById('detailPanel');
     detailPanel.classList.toggle('hidden');
     const isHidden = detailPanel.classList.contains('hidden');
-    detailToggle.innerHTML = isHidden
+    document.getElementById('detailToggle').innerHTML = isHidden
       ? '<i class="fa-solid fa-up-right-from-square mr-1"></i>詳細'
       : '<i class="fa-solid fa-chevron-up mr-1"></i>閉じる';
   });
+const mailForm = document.getElementById('mailForm');
+  const confirmModal = document.getElementById('confirmModal');
 
-  loadData();
+  // 確認ボタン（submit）を押した時の処理
+  mailForm.addEventListener('submit', (e) => {
+    e.preventDefault(); // 通常の画面遷移をストップ
+
+    const subj = subjectInput.value;
+    const intro = introInput.value;
+    const body = bodyInput.value;
+    const sig = signatureInput.value;
+    
+    // 罫線
+    const divider = "-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-";
+
+    // ご指示通りのレイアウトでメール本文を組み立て
+    const fullBody = [
+      "株式会社SBT ご担当者様",
+      "",
+      "いつもお世話になっております、SBT営業部です。",
+      "",
+      intro,
+      "",
+      divider,
+      body,
+      "",
+      divider,
+      "",
+      "以上、何卒よろしくお願いいたします。",
+      "",
+      sig
+    ].join('\n');
+    
+    // 空行を除外して宛先件数を計算
+    const toList = sendtoInput.value.split('\n').filter(l => l.trim() !== '');
+
+    // モーダルへ出力
+    document.getElementById('previewSubject').textContent = subj;
+    document.getElementById('previewBody').textContent = fullBody;
+    document.getElementById('previewToCount').innerHTML = `送信予定: <span class="text-cyan-600 font-bold text-lg">${toList.length}</span> 件`;
+    document.getElementById('previewTo').textContent = toList.join('\n');
+
+    confirmModal.classList.remove('hidden');
+  });
+
+  function closeConfirmModal() {
+    confirmModal.classList.add('hidden');
+  }
+
+  // サーバーへ送信（下書き or 配信）
+  async function submitAction(action) {
+    // ボタンの二重クリック防止
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 処理中...';
+    btn.disabled = true;
+
+    const formData = new FormData(mailForm);
+    formData.append('action', action); // 'draft' または 'sent'
+    formData.append('type', type); // 'anken' / 'engineer' / 'free'
+    if (id) formData.append('id', id);
+    if (historyId) formData.append('history_id', historyId);
+
+    try {
+      const res = await fetch('/api/save_sendmail.php', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      const result = await res.json();
+      
+      if (result.status === 'success') {
+        alert(action === 'draft' ? '下書き保存しました。' : '配信処理を受け付けました！');
+        window.location.href = '/sendmail'; // 一覧画面へ戻る
+      } else {
+        alert('エラーが発生しました: ' + result.message);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    } catch (e) {
+      alert('通信エラーが発生しました。');
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }
+  }
+
+  // イベントリスナーの登録
+  document.getElementById('saveDraftBtn').addEventListener('click', () => submitAction('draft'));
+  document.getElementById('executeSendBtn').addEventListener('click', () => submitAction('sent'));
+
 </script>
