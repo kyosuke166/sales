@@ -475,11 +475,9 @@ const mailForm = document.getElementById('mailForm');
     const intro = introInput.value;
     const body = bodyInput.value;
     const sig = signatureInput.value;
-    
-    // 罫線
     const divider = "-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-";
 
-    // ご指示通りのレイアウトでメール本文を組み立て
+    // メール本文を組み立て
     const fullBody = [
       "株式会社SBT ご担当者様",
       "",
@@ -522,13 +520,17 @@ const mailForm = document.getElementById('mailForm');
     btn.disabled = true;
 
     const formData = new FormData(mailForm);
-    formData.append('action', action); // 'draft' または 'sent'
-    formData.append('type', type); // 'anken' / 'engineer' / 'free'
+    formData.append('action', action);
+    formData.append('type', type);
     if (id) formData.append('id', id);
     if (historyId) formData.append('history_id', historyId);
 
+    // プレビュー用に組み立てた完成形テキストを formData の full_body として追加
+    const fullBodyText = document.getElementById('previewBody').textContent;
+    formData.append('full_body', fullBodyText);
+
     try {
-      const res = await fetch('/api/save_sendmail.php', {
+      const res = await fetch('/api/save_sendmail_history.php', {
         method: 'POST',
         body: formData,
         credentials: 'include'
