@@ -26,7 +26,9 @@ import Layout from '../../layouts/Layout.astro';
         if (!container) return;
 
         try {
-            const res = await fetch('/api/get_groups.php');
+            const res = await fetch('/api/get_groups.php', {
+                credentials: 'include'
+            });
             const result = await res.json();
 
             if (result.status === 'success' && result.data.length > 0) {

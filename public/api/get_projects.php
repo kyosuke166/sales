@@ -2,7 +2,7 @@
 /**
  * 案件一覧、または特定の1件を取得する
  */
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 header('Content-Type: application/json; charset=UTF-8');
 
 try {

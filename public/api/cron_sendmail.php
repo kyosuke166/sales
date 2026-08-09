@@ -6,6 +6,10 @@ if (php_sapi_name() !== 'cli') {
     exit('Direct access not permitted.');
 }
 
+// 途中でタイムアウトして落ちないように、実行時間制限を無効化する
+set_time_limit(0);
+ini_set('memory_limit', '256M'); // 念のためメモリ上限も少し上げておく
+
 require_once __DIR__ . '/../../db-config.php';
 
 // PHPMailerの読み込み（api/PHPMailer 配下に配置）
@@ -120,6 +124,9 @@ try {
     $mail->smtpClose();
     fclose($fp);
 
+    // 長時間ループによってDB接続が切断されている対策（もう一度新しく接続し直す）
+    $pdo = get_db_connection();
+   
     // 【DB更新 終了時】最終結果を記録
     $updateEnd = $pdo->prepare("UPDATE sendmail_history SET status = 'sent', success_count = :success, error_count = :error, finished = NOW() WHERE id = :id");
     $updateEnd->execute([
@@ -130,4 +137,9 @@ try {
 
 } catch (Exception $e) {
     error_log("Sendmail Cron Error: " . $e->getMessage());
+    // エラーで強制終了してしまった場合、DBのステータスを'error'にして止める ▼▼
+    if (isset($pdo) && isset($history_id)) {
+        $updateError = $pdo->prepare("UPDATE sendmail_history SET status = 'error', finished = NOW() WHERE id = :id");
+        $updateError->execute([':id' => $history_id]);
+    }
 }

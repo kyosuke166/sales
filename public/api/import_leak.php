@@ -3,7 +3,7 @@
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 $pdo = get_db_connection();
 
 $source_date = $_POST['source_date'] ?? '';
@@ -28,11 +28,11 @@ if ($mode === 'preview') {
     $handle = fopen($file, "r");
     
     // ヘッダー読み飛ばし (宛先の会社,宛先の担当者,メールアドレス)
-    fgetcsv($handle);
+    fgetcsv($handle, 0, ",", "\"", "\\");
 
     $rows = [];
     $i = 0;
-    while (($data = fgetcsv($handle)) !== FALSE) {
+    while (($data = fgetcsv($handle, 0, ",", "\"", "\\")) !== FALSE) {
         if (empty($data[2])) continue; // メールアドレスがない行はスキップ
 
         $rows[] = [

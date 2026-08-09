@@ -1,6 +1,9 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 header('Content-Type: application/json; charset=UTF-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
 
 try {
     $pdo = get_db_connection();
@@ -20,6 +23,7 @@ try {
                 COALESCE(a.received, e.received) AS received,
                 COALESCE(a.contact_method, e.contact_method) AS contact_method,
                 co.company_name,
+                COALESCE(a.company_id, e.company_id) AS company_id,
                 CONCAT(IFNULL(c.last_name, ''), ' ', IFNULL(c.first_name, '')) AS contact_name,
                 COALESCE(a.original, e.original) AS original,
                 CASE 
@@ -47,6 +51,9 @@ try {
             h.anken_id,
             h.engineer_id,
             h.subject,
+            h.total_count,
+            h.success_count,
+            h.error_count,
             COALESCE(a.received, e.received) AS received,
             COALESCE(a.contact_method, e.contact_method) AS contact_method,
             co.company_name,

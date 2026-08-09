@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 ini_set('memory_limit', '512M'); 
 set_time_limit(0);
 
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 require_once 'vendor/autoload.php';
 
 header('Content-Type: application/json');

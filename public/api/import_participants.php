@@ -3,7 +3,7 @@
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-require_once __DIR__ . '/../../auth_check.php'; 
+require_once 'auth_check.php'; 
 $pdo = get_db_connection(); 
 
 $eventId = isset($_POST['event_id']) ? (int)$_POST['event_id'] : null;
@@ -63,9 +63,9 @@ if (isset($_FILES['csv']) && $_FILES['csv']['error'] === UPLOAD_ERR_OK) {
     $handle = fopen($_FILES['csv']['tmp_name'], "r");
     $bom = fread($handle, 3);
     if ($bom !== "\xEF\xBB\xBF") rewind($handle);
-    fgetcsv($handle); 
+    fgetcsv($handle, 0, ",", "\"", "\\");
 
-    while (($line = fgetcsv($handle)) !== FALSE) {
+    while (($line = fgetcsv($handle, 0, ",", "\"", "\\")) !== FALSE) {
         $c_name = trim($line[0] ?? '');
         $p_name = trim($line[1] ?? '');
         $email  = trim($line[2] ?? '');

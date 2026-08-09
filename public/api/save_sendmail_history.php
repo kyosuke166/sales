@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 header('Content-Type: application/json; charset=UTF-8');
 
 try {
@@ -129,7 +129,8 @@ try {
         //exec("php {$cron_path} > /dev/null 2>&1 &");
         //exec("/usr/local/bin/php {$cron_path} > /dev/null 2>&1 &");
         //exec("/usr/local/php/default/bin/php {$cron_path} >> {$log_path} 2>&1 &");
-        exec("/usr/local/php/default/bin/php {$cron_path} > /dev/null 2>&1 &");
+        //exec("/usr/local/php/default/bin/php {$cron_path} > /dev/null 2>&1 &");
+        exec("/usr/bin/php {$cron_path} > /dev/null 2>&1 &");
     }
 
     // バックグラウンドで実行開始後、画面には一瞬でレスポンスを返す！

@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 header('Content-Type: application/json');
 
 $pdo = get_db_connection();
@@ -102,38 +102,42 @@ if ($mode === 'execute_single') {
         $pdo = get_db_connection();
         
         if ($type === 'event') {
-            // プレビューと全く同じ条件でJOINしてUPDATEをかける
+            // 交流会参加者：CRM IDを紐付け、メールがない場合は補完し、send_flgを0にする
             $sql = "UPDATE events_participant ep 
                     JOIN crm_contact c ON (
-                        REPLACE(REPLACE(REPLACE(ep.participant_name, ' ', ''), '　', ''), '様', '') = 
-                        REPLACE(REPLACE(REPLACE(CONCAT(IFNULL(c.last_name,''), IFNULL(c.first_name,'')), ' ', ''), '　', ''), '様', '')
+                        REPLACE(REPLACE(REPLACE(ep.participant_name, ' ', ''), ' ', ''), '様', '') = 
+                        REPLACE(REPLACE(REPLACE(CONCAT(IFNULL(c.last_name,''), IFNULL(c.first_name,'')), ' ', ''), ' ', ''), '様', '')
                     )
                     JOIN crm_company cp ON c.company_id = cp.id AND (
-                        REPLACE(REPLACE(ep.company_name, ' ', ''), '　', '') = REPLACE(REPLACE(IFNULL(cp.company_name,''), ' ', ''), '　', '')
+                        REPLACE(REPLACE(ep.company_name, ' ', ''), ' ', '') = REPLACE(REPLACE(IFNULL(cp.company_name,''), ' ', ''), ' ', '')
                     )
                     SET 
                         ep.contact_id = c.id, 
                         ep.company_id = c.company_id,
-                        ep.email = CASE WHEN ep.email IS NULL OR ep.email = '' THEN c.email ELSE ep.email END
+                        ep.email = CASE WHEN ep.email IS NULL OR ep.email = '' THEN c.email ELSE ep.email END,
+                        ep.send_flg = 0
                     WHERE ep.id = ? 
                     AND ep.contact_id IS NULL 
-                    AND c.deleted IS NULL"; // 削除済みを除外
+                    AND c.deleted IS NULL";
         } else {
-            // leak 側
+            // 外部収集メール：CRM IDを紐付け、send_nameをNULLにする
             $sql = "UPDATE leaked_contacts lc 
                     JOIN crm_contact c ON lc.email = c.email 
-                    SET lc.contact_id = c.id, lc.company_id = c.company_id 
-                    WHERE lc.id = ? AND lc.contact_id IS NULL AND c.deleted IS NULL";
+                    SET 
+                        lc.contact_id = c.id, 
+                        lc.company_id = c.company_id,
+                        lc.send_name = NULL
+                    WHERE lc.id = ? 
+                    AND lc.contact_id IS NULL 
+                    AND c.deleted IS NULL";
         }
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$id]);
         
-        // 実際に何件更新されたかチェック
         $count = $stmt->rowCount();
         
         if ($count === 0) {
-            // 更新されなかった場合、原因を探るためにエラーではなく成功だがメッセージを返すなどの対応
             echo json_encode(['success' => true, 'debug' => '更新対象が見つかりませんでした。条件が一致していない可能性があります。']);
         } else {
             echo json_encode(['success' => true]);

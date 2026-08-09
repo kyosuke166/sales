@@ -93,8 +93,22 @@ if (historyId) {
         </div>
 
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-2">宛先</label>
-          <textarea id="sendtoInput" name="sendto" rows="10" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2" placeholder="メールアドレスを入力" required></textarea>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-sm font-bold text-slate-700">宛先</label>
+            <!-- 宛先の一括入力ボタン（フリーの時は非表示） -->
+            <div id="targetButtons" class="hidden flex gap-2">
+              <button type="button" onclick="fetchTargetList('common', this)" class="px-3 py-1 text-xs font-bold text-slate-600 bg-white border border-slate-300 rounded hover:bg-cyan-50 hover:text-cyan-600 hover:border-cyan-300 transition-all shadow-sm">
+                <i class="fa-solid fa-users text-slate-400 mr-1"></i>共通アドレス
+              </button>
+              <button type="button" onclick="fetchTargetList('personal', this)" class="px-3 py-1 text-xs font-bold text-slate-600 bg-white border border-slate-300 rounded hover:bg-cyan-50 hover:text-cyan-600 hover:border-cyan-300 transition-all shadow-sm">
+                <i class="fa-solid fa-user text-slate-400 mr-1"></i>個人アドレス
+              </button>
+              <button type="button" onclick="fetchTargetList('all', this)" class="px-3 py-1 text-xs font-bold text-slate-600 bg-white border border-slate-300 rounded hover:bg-cyan-50 hover:text-cyan-600 hover:border-cyan-300 transition-all shadow-sm">
+                <i class="fa-solid fa-layer-group text-slate-400 mr-1"></i>総合
+              </button>
+            </div>
+          </div>
+          <textarea id="sendtoInput" name="sendto" rows="10" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 px-3 py-2 text-xs font-mono" placeholder="メールアドレスを入力" required></textarea>
         </div>
 
         <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
@@ -154,9 +168,10 @@ if (historyId) {
 </Layout>
 
 <script is:inline>
+  let currentCompanyId = null;
   const params = new URLSearchParams(window.location.search);
   const historyId = params.get('history_id');
-  const type = params.get('type') ?? 'anken';
+  let type = params.get('type') ?? 'anken';
   const id = params.get('id') ?? '';
   
   const isFree = type === 'free';
@@ -192,7 +207,7 @@ if (historyId) {
       .filter(Boolean)
       .map((line) => {
         const cleaned = line.replace(/^・\s*/, '');
-        return withBullet ? `【 】${cleaned}` : cleaned;
+        return withBullet ? `【　】${cleaned}` : cleaned;
       });
   }
 
@@ -208,7 +223,7 @@ if (historyId) {
       const detailParts = [];
 
       if (age) detailParts.push(age);
-      if (experienceYears) detailParts.push(experienceYears);
+      if (experienceYears) detailParts.push(`経験${experienceYears}`);
       if (detailParts.length) subjectParts.push(detailParts.join('/'));
 
       subjectParts.push(price, period);
@@ -273,10 +288,10 @@ if (historyId) {
       const engineerLines = [];
       if (row.period) engineerLines.push(`稼働可：${row.period}`);
       if (row.area) engineerLines.push(`最寄駅：${row.area}`);
-      if (row.belong) engineerLines.push(`所属 ：${row.belong}`);
-      if (row.price) engineerLines.push(`単金 ：${row.price}`);
+      if (row.belong) engineerLines.push(`所属　：${row.belong}`);
+      if (row.price) engineerLines.push(`単金　：${row.price}`);
       if (row.base_hours) engineerLines.push(`精算幅：${row.base_hours}`);
-      if (row.hope) engineerLines.push(`希望 ：${row.hope}`);
+      if (row.hope) engineerLines.push(`希望　：${row.hope}`);
       if (engineerLines.length) lines.push(...engineerLines);
 
       const licenseText = normalizeValue(row.license);
@@ -304,14 +319,26 @@ if (historyId) {
       if (row.area) ankenLines.push(`作業場所：${row.area}`);
       if (row.work_time) ankenLines.push(`就業時間：${row.work_time}`);
       if (row.recruit) ankenLines.push(`募集人数：${row.recruit}`);
-      if (row.interview) ankenLines.push(`面談  ：${row.interview}`);
-      if (row.price) ankenLines.push(`単価  ：${row.price}`);
-      if (row.base_hours) ankenLines.push(`精算幅 ：${row.base_hours}`);
-      if (row.note) {
-        ankenLines.push(`備考  ：${row.note}`);
-      } else {
-        ankenLines.push('備考  ：外国籍不可');
+      if (row.interview) ankenLines.push(`面談　　：${row.interview}`);
+      if (row.price) ankenLines.push(`単価　　：${row.price}`);
+      if (row.base_hours) ankenLines.push(`精算幅　：${row.base_hours}`);
+      // 備考
+      let noteStr = normalizeValue(row.note);
+      // 「外国籍不可」が含まれていなければ追記
+      if (!noteStr.includes('外国籍不可')) {
+        noteStr = noteStr ? noteStr + '\n外国籍不可' : '外国籍不可';
       }
+      // 2. 改行ごとに分割してインデント処理
+      const noteLinesArr = noteStr.split(/\r?\n/);
+      if (noteLinesArr.length > 0) {
+        // 1行目
+        ankenLines.push(`備考　　：${noteLinesArr[0]}`);
+        // 2行目以降 （全角スペース5つで頭を揃える）
+        for (let i = 1; i < noteLinesArr.length; i++) {
+          ankenLines.push(`　　　　　${noteLinesArr[i]}`);
+        }
+      }
+
       if (ankenLines.length) lines.push(...ankenLines);
 
       const overviewText = normalizeValue(row.overview);
@@ -367,6 +394,11 @@ if (historyId) {
       if (!row.engineer_id && !row.anken_id) {
         metaPanel.classList.add('hidden'); // フリー配信の履歴ならメタ情報非表示
       } else {
+        // 履歴からの種別判定と会社IDを復元
+        type = row.engineer_id ? 'engineer' : 'anken';
+        currentCompanyId = row.company_id || null;
+        document.getElementById('targetButtons').classList.remove('hidden'); // ボタンを表示
+
         // マスターと同じ情報元情報を表示する
         document.getElementById('labelCol1').textContent = '情報受領日';
         document.getElementById('infoReceived').textContent = formatDate(row.received || '');
@@ -431,6 +463,10 @@ if (historyId) {
       if (result.status !== 'success') throw new Error(result.message || 'データ取得に失敗しました。');
       
       const row = result.data || {};
+      currentCompanyId = row.company_id || null;
+      // 案件・エンジニアの場合は便利ボタンを表示する
+      document.getElementById('targetButtons').classList.remove('hidden');
+      
       document.getElementById('infoReceived').textContent = formatDate(row.received || '');
       document.getElementById('infoCompany').textContent = row.company_name || '未紐づけ';
       document.getElementById('infoContact').textContent = row.contact_name || '未紐づけ';
@@ -444,6 +480,39 @@ if (historyId) {
       signatureInput.value = buildSignature();
     } catch (error) {
       console.error(error);
+    }
+  }
+
+  // 宛先の一括取得
+  async function fetchTargetList(targetType, btnEl) {
+    if (!confirm('宛先リストを上書きします。よろしいですか？')) return;
+
+    const originalHtml = btnEl.innerHTML;
+    btnEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>取得中';
+    btnEl.disabled = true;
+
+    try {
+      const qs = new URLSearchParams({
+        type: type, // 'anken' または 'engineer'
+        target_type: targetType,
+        exclude_company_id: currentCompanyId || ''
+      });
+
+      const res = await fetch(`/api/extract_broadcast_targets.php?${qs.toString()}`);
+      const json = await res.json();
+
+      if (json.status === 'success') {
+        sendtoInput.value = json.data;
+        // アラートで件数をお知らせする（少しUX向上）
+        alert(`${json.count}件の宛先をセットしました。`);
+      } else {
+        alert('取得に失敗しました: ' + json.message);
+      }
+    } catch (e) {
+      alert('通信エラーが発生しました。');
+    } finally {
+      btnEl.innerHTML = originalHtml;
+      btnEl.disabled = false;
     }
   }
 

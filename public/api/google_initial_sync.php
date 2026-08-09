@@ -2,7 +2,7 @@
 /**
  * 初期連携：Googleに存在しない番号のみを新規登録する
  */
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 require_once 'vendor/autoload.php';
 
 header('Content-Type: application/json');

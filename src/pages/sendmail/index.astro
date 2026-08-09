@@ -107,6 +107,50 @@ import Layout from '../../layouts/Layout.astro';
         </table>
       </div>
     </section>
+
+    <!-- 進捗確認用モーダル ▼ -->
+    <div id="progressModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col">
+        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <h3 class="font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-satellite-dish text-cyan-600 fa-beat-fade"></i> 配信状況の確認
+          </h3>
+          <button type="button" onclick="closeProgressModal()" class="text-slate-400 hover:text-slate-600 transition outline-none">
+            <i class="fa-solid fa-xmark text-xl"></i>
+          </button>
+        </div>
+        <div class="p-6 flex flex-col gap-5">
+          <!-- カウント＆プログレスバー -->
+          <div>
+            <div class="flex justify-between items-end mb-2">
+              <span id="progressStatusText" class="text-xs font-bold text-cyan-600 px-2 py-1 bg-cyan-50 rounded">配信中...</span>
+              <span class="font-mono font-bold text-slate-700">
+                <span id="progressCurrent" class="text-2xl text-cyan-600">0</span> / <span id="progressTotal">0</span> 件 
+                (<span id="progressPercent" class="text-sm">0%</span>)
+              </span>
+            </div>
+            <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+              <div id="progressBar" class="h-full bg-cyan-500 transition-all duration-500 ease-out w-0 relative">
+                <!-- 光るエフェクト -->
+                <div class="absolute top-0 left-0 right-0 bottom-0 bg-white/20 w-full h-full animate-[shimmer_2s_infinite]"></div>
+              </div>
+            </div>
+          </div>
+          <!-- tail -f 風 ログビューアー -->
+          <div class="bg-slate-900 rounded-xl p-4 shadow-inner border border-slate-700">
+            <div class="flex items-center gap-2 mb-2 pb-2 border-b border-slate-700/50">
+              <div class="w-3 h-3 rounded-full bg-rose-500"></div>
+              <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+              <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+              <span class="text-[10px] text-slate-500 font-mono ml-2">server.log (tail -f)</span>
+            </div>
+            <div id="progressLogViewer" class="h-64 overflow-y-auto font-mono text-[11px] text-emerald-400 whitespace-pre-wrap leading-relaxed tracking-wider">
+              waiting for logs...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 </Layout>
 
@@ -157,12 +201,32 @@ import Layout from '../../layouts/Layout.astro';
             statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-rose-50 text-rose-600 rounded border border-rose-200">エラー</span>';
             actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded transition">詳細・再送</a>`;
             break;
+          case 'sending': // ★ 新規追加！
+            statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-cyan-50 text-cyan-600 rounded border border-cyan-200 animate-pulse"><i class="fa-solid fa-spinner fa-spin mr-1"></i>配信中</span>';
+            actionBtn = `<button onclick="openProgressModal(${item.id})" class="px-3 py-1.5 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-cyan-700 text-xs font-bold rounded transition shadow-sm outline-none"><i class="fa-solid fa-satellite-dish mr-1"></i>進捗</button>`;
+            break;
           default:
             statusBadge = `<span class="px-2 py-1 text-[10px] font-bold bg-slate-50 text-slate-400 rounded">${item.status || '---'}</span>`;
             actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded transition">詳細</a>`;
         }
 
-        // ▼ 3. 行の出力（状態カラムを追加）
+        // ▼ 3. ログダウンロードボタンの判定（送信済かつ total_count が存在する場合）
+        let logDownloadBtn = '';
+        if (item.status === 'sent' && item.total_count && Number(item.total_count) > 0) {
+          const tooltipText = `全体: ${item.total_count}件 / 成功: ${item.success_count}件 / 失敗: ${item.error_count}件`;
+          const formattedId = String(item.id).padStart(6, '0');
+          const logUrl = `/storage/log/sendmail_history_${formattedId}.csv`;
+          logDownloadBtn = `
+            <a href="${logUrl}" 
+               title="${tooltipText}"
+               download
+               class="p-1 text-slate-400 hover:text-cyan-600 text-lg transition-colors outline-none"
+               target="_blank">
+               <i class="fa-solid fa-file-csv"></i>
+            </a>`;
+        }
+
+        // ▼ 4. 行の出力（状態カラムを追加）
         return `
           <tr class="hover:bg-slate-50 transition">
             <td class="py-3 px-4 whitespace-nowrap text-slate-500 text-xs">${item.senddate}</td>
@@ -170,7 +234,12 @@ import Layout from '../../layouts/Layout.astro';
             <td class="py-3 px-4 whitespace-nowrap">${typeBadge}</td>
             <td class="py-3 px-4 font-bold text-slate-800 max-w-md truncate">${item.subject}</td>
             <td class="py-3 px-4 whitespace-nowrap">
-              ${actionBtn}
+              <!-- ↓↓↓ ここのdivと ${logDownloadBtn} が入っているか確認！ ↓↓↓ -->
+              <div class="flex items-center gap-2">
+                ${actionBtn}
+                ${logDownloadBtn}
+              </div>
+              <!-- ↑↑↑ ------------------------------------------ ↑↑↑ -->
             </td>
           </tr>
         `;
@@ -182,4 +251,78 @@ import Layout from '../../layouts/Layout.astro';
   }
 
   loadHistory();
+
+  // --- 進捗モーダル制御用 ---
+  let progressTimer = null;
+  const progressModal = document.getElementById('progressModal');
+  const logViewer = document.getElementById('progressLogViewer');
+  const progressBar = document.getElementById('progressBar');
+
+  function openProgressModal(id) {
+    progressModal.classList.remove('hidden');
+    logViewer.innerHTML = 'Connecting to server...';
+    progressBar.style.width = '0%';
+    
+    // 初回即時実行
+    fetchProgress(id);
+    // 以降、1.5秒に1回ポーリング
+    progressTimer = setInterval(() => fetchProgress(id), 1500);
+  }
+
+  function closeProgressModal() {
+    progressModal.classList.add('hidden');
+    if (progressTimer) {
+      clearInterval(progressTimer);
+      progressTimer = null;
+    }
+  }
+
+  async function fetchProgress(id) {
+    try {
+      const res = await fetch(`/api/get_send_progress.php?id=${id}`);
+      const json = await res.json();
+      if (json.status !== 'success') return;
+
+      const total = json.total || 0;
+      const current = json.current || 0;
+      const percent = total > 0 ? Math.floor((current / total) * 100) : 0;
+
+      document.getElementById('progressTotal').textContent = total;
+      document.getElementById('progressCurrent').textContent = current;
+      document.getElementById('progressPercent').textContent = percent + '%';
+      progressBar.style.width = percent + '%';
+
+      // ログの流し込み（黒い画面）
+      if (json.logs && json.logs.length > 0) {
+        logViewer.innerHTML = json.logs.map(line => {
+          // カンマ区切りのCSVをスペースに置換してターミナルっぽく見せる
+          let text = line.replace(/,/g, '  |  ');
+          // 「失敗」の文字があれば赤色にする
+          if (text.includes('失敗')) {
+            return `<span class="text-rose-400">${text}</span>`;
+          }
+          return text;
+        }).join('\n');
+      }
+
+      // 常に一番下へ自動スクロール (tail -f の挙動)
+      logViewer.scrollTop = logViewer.scrollHeight;
+
+      // ステータスが sent (または error) になったらポーリング終了
+      if (json.task_status !== 'sending' && json.task_status !== 'waiting') {
+        document.getElementById('progressStatusText').textContent = '配信完了';
+        document.getElementById('progressStatusText').className = 'text-xs font-bold text-emerald-600 px-2 py-1 bg-emerald-50 rounded border border-emerald-200';
+        clearInterval(progressTimer);
+        progressTimer = null;
+        // 一覧も最新にしたい場合はここで loadHistory() を呼ぶと良いです
+        loadHistory();
+      } else {
+        document.getElementById('progressStatusText').textContent = '配信中...';
+        document.getElementById('progressStatusText').className = 'text-xs font-bold text-cyan-600 px-2 py-1 bg-cyan-50 rounded border border-cyan-200 animate-pulse';
+      }
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
 </script>

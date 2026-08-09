@@ -2,7 +2,7 @@
 /**
  * 同期ステータス取得API
  */
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 require_once 'vendor/autoload.php';
 
 header('Content-Type: application/json');

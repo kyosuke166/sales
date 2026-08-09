@@ -2,7 +2,7 @@
 /**
  * Googleからのコールバック受信用スクリプト（暫定ID版）
  */
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 require_once 'vendor/autoload.php';
 
 // セッション開始

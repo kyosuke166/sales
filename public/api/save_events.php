@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
+require_once 'auth_check.php';
 header('Content-Type: application/json');
 
 $input = json_decode(file_get_contents('php://input'), true);
