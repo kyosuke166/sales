@@ -9,6 +9,75 @@ try {
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 100;
     $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
     $search = isset($_GET['q']) ? trim($_GET['q']) : '';
+    $company_search = isset($_GET['company_search']) ? trim($_GET['company_search']) : '';
+    $company_id = isset($_GET['company_id']) ? (int)$_GET['company_id'] : null;
+    $contacts_only = isset($_GET['contacts']) && $_GET['contacts'] === '1';
+
+    if ($company_search !== '') {
+        $keywords = preg_split('/\s+/u', mb_convert_kana($company_search, 's'));
+        $where = [];
+        $params = [];
+        foreach ($keywords as $i => $word) {
+            $param = ':company_search' . $i;
+            $where[] = "(company_name LIKE $param OR company_kana LIKE $param)";
+            $params[$param] = "%{$word}%";
+        }
+        $sql = 'SELECT id, company_name, company_kana, status FROM crm_company';
+        if (count($where) > 0) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+        $sql .= ' ORDER BY company_kana ASC, company_name ASC LIMIT :limit';
+
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val, PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':limit', min($limit, 50), PDO::PARAM_INT);
+        $stmt->execute();
+
+        $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode([ 'status' => 'success', 'data' => $companies ]);
+        exit;
+    }
+
+    if ($company_id > 0 && $contacts_only) {
+        $whereConditions = ['c.company_id = :company_id'];
+        $params = [':company_id' => $company_id];
+        if ($search !== '') {
+            $keywords = preg_split('/\s+/u', mb_convert_kana($search, 's'));
+            foreach ($keywords as $i => $word) {
+                $param = ":q{$i}";
+                $whereConditions[] = "(
+                    c.last_name LIKE $param
+                    OR c.first_name LIKE $param
+                    OR c.last_kana LIKE $param
+                    OR c.first_kana LIKE $param
+                    OR c.email LIKE $param
+                    OR c.email_personal LIKE $param
+                    OR c.tel LIKE $param
+                    OR c.division LIKE $param
+                    OR c.position LIKE $param
+                )";
+                $params[$param] = "%{$word}%";
+            }
+        }
+        $whereSql = ' WHERE ' . implode(' AND ', $whereConditions);
+        $stmt = $pdo->prepare(
+            'SELECT id, company_id, last_name, first_name, last_kana, first_kana, email, division, position'
+            . ' FROM crm_contact c' . $whereSql
+            . ' ORDER BY sort ASC, last_name ASC, first_name ASC'
+            . ' LIMIT :limit'
+        );
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val, PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':limit', min($limit, 100), PDO::PARAM_INT);
+        $stmt->execute();
+
+        $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode([ 'status' => 'success', 'data' => $contacts ]);
+        exit;
+    }
 
     // 1. ベースとなる句
     //$fromSql = " FROM crm_contact c LEFT JOIN crm_company co ON c.company_id = co.id";

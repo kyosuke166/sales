@@ -89,13 +89,17 @@ import Layout from '../../layouts/Layout.astro';
               <option value="電話">電話</option>
             </select>
           </div>
-          <div>
-            <label for="f_company_id" class="block text-sm font-bold text-slate-700 mb-1">会社ID</label>
-            <input type="number" name="company_id" id="f_company_id" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+          <div class="relative">
+            <label for="f_company_name" class="block text-sm font-bold text-slate-700 mb-1">会社</label>
+            <input type="hidden" name="company_id" id="f_company_id">
+            <input type="text" id="f_company_name" placeholder="会社名を検索" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2" autocomplete="off">
+            <div id="companyDropdown" class="absolute left-0 right-0 z-50 mt-1 max-h-72 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
           </div>
           <div>
-            <label for="f_contact_id" class="block text-sm font-bold text-slate-700 mb-1">担当者ID</label>
-            <input type="number" name="contact_id" id="f_contact_id" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+            <label for="f_contact_id" class="block text-sm font-bold text-slate-700 mb-1">担当者</label>
+            <select name="contact_id" id="f_contact_id" disabled class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 px-3 py-2">
+              <option value="">会社を選択してください</option>
+            </select>
           </div>
           <div class="md:col-span-2">
             <label for="f_original" class="block text-sm font-bold text-slate-700 mb-1">元のエンジニア情報 <span class="text-red-500">*</span></label>
@@ -289,7 +293,17 @@ import Layout from '../../layouts/Layout.astro';
           if (el) el.value = result.data[key] ?? '';
         }
       });
+
+      if (result.data.company_id) {
+        setCompanySelection(result.data.company_id, result.data.company_name || '');
+        await loadCompanyContacts(result.data.company_id, result.data.contact_id);
+      } else {
+        clearCompanySelection();
+      }
+    } else {
+      clearCompanySelection();
     }
+
     document.getElementById('modal').classList.remove('hidden');
     document.getElementById('modal').classList.add('flex');
   }
@@ -333,6 +347,113 @@ import Layout from '../../layouts/Layout.astro';
     document.getElementById('sourceModal').classList.add('hidden');
     document.getElementById('sourceModal').classList.remove('flex');
   }
+
+  function setCompanySelection(companyId, companyName) {
+    document.getElementById('f_company_id').value = companyId;
+    document.getElementById('f_company_name').value = companyName;
+  }
+
+  function clearCompanySelection() {
+    document.getElementById('f_company_id').value = '';
+    document.getElementById('f_company_name').value = '';
+    const contactEl = document.getElementById('f_contact_id');
+    contactEl.innerHTML = '<option value="">会社を選択してください</option>';
+    contactEl.disabled = true;
+  }
+
+  async function loadCompanyContacts(companyId, selectedContactId = null) {
+    const contactEl = document.getElementById('f_contact_id');
+    contactEl.innerHTML = '<option value="">読み込み中...</option>';
+    contactEl.disabled = true;
+
+    try {
+      const res = await fetch(`/api/get_contacts.php?company_id=${companyId}&contacts=1&limit=100`, { credentials: 'include' });
+      const result = await res.json();
+      if (result.status !== 'success') throw new Error(result.message || '読み込みエラー');
+
+      if (!Array.isArray(result.data) || result.data.length === 0) {
+        contactEl.innerHTML = '<option value="">担当者が見つかりません</option>';
+        contactEl.disabled = true;
+        return;
+      }
+
+      contactEl.innerHTML = '<option value="">担当者を選択してください</option>';
+      for (const contact of result.data) {
+        const option = document.createElement('option');
+        const name = `${contact.last_name || ''}${contact.first_name || ''}`;
+        const label = name || contact.email || `ID:${contact.id}`;
+        option.value = contact.id;
+        option.textContent = `${label}${contact.position ? ' / ' + contact.position : ''}${contact.email ? ' (' + contact.email + ')' : ''}`;
+        contactEl.appendChild(option);
+      }
+      contactEl.disabled = false;
+      if (selectedContactId) contactEl.value = selectedContactId;
+    } catch (err) {
+      contactEl.innerHTML = '<option value="">担当者読み込みエラー</option>';
+      contactEl.disabled = true;
+    }
+  }
+
+  function renderCompanyDropdown(companies) {
+    const dropdown = document.getElementById('companyDropdown');
+    if (!companies || companies.length === 0) {
+      dropdown.innerHTML = '<div class="px-4 py-3 text-sm text-slate-500">該当する会社がありません</div>';
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    dropdown.innerHTML = companies.map(company => {
+      const companyLabel = company.company_name || '';
+      const kana = company.company_kana ? ` / ${company.company_kana}` : '';
+      return `<button type="button" class="w-full text-left px-4 py-3 hover:bg-slate-100 border-b last:border-b-0 text-sm company-option" data-id="${company.id}" data-name="${companyLabel}">${companyLabel}${kana}</button>`;
+    }).join('');
+
+    dropdown.querySelectorAll('.company-option').forEach(button => {
+      button.addEventListener('click', () => {
+        setCompanySelection(button.dataset.id, button.dataset.name);
+        dropdown.classList.add('hidden');
+        loadCompanyContacts(button.dataset.id);
+      });
+    });
+    dropdown.classList.remove('hidden');
+  }
+
+  let companySearchTimeout = null;
+  document.getElementById('f_company_name').addEventListener('input', (e) => {
+    const value = e.target.value.trim();
+    setCompanySelection('', '');
+    const contactEl = document.getElementById('f_contact_id');
+    contactEl.innerHTML = '<option value="">会社を選択してください</option>';
+    contactEl.disabled = true;
+
+    const dropdown = document.getElementById('companyDropdown');
+    if (companySearchTimeout) clearTimeout(companySearchTimeout);
+    if (!value) {
+      dropdown.classList.add('hidden');
+      return;
+    }
+
+    companySearchTimeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/get_contacts.php?company_search=${encodeURIComponent(value)}&limit=20`, { credentials: 'include' });
+        const result = await res.json();
+        if (result.status !== 'success') throw new Error(result.message || '検索エラー');
+        renderCompanyDropdown(result.data);
+      } catch (err) {
+        const dropdown = document.getElementById('companyDropdown');
+        dropdown.innerHTML = '<div class="px-4 py-3 text-sm text-slate-500">検索エラー</div>';
+        dropdown.classList.remove('hidden');
+      }
+    }, 200);
+  });
+
+  document.addEventListener('click', (event) => {
+    const dropdown = document.getElementById('companyDropdown');
+    const input = document.getElementById('f_company_name');
+    if (!dropdown.contains(event.target) && event.target !== input) {
+      dropdown.classList.add('hidden');
+    }
+  });
 
   document.getElementById('entryForm').addEventListener('submit', async (e) => {
     e.preventDefault();
