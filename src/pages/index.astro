@@ -45,6 +45,24 @@ const menus = [
         active: true, 
     },
     { 
+        title: "phpMyAdmin", 
+        subtitle: "（営業管理システム.work）",
+        icon: "fa-sailboat", 
+        href: "/phpmyadmin/", 
+        color: "bg-purple-600", 
+        active: true,
+        external: true 
+    },
+    { 
+        title: "phpMyAdmin", 
+        subtitle: "（コーポレートサイト.co.jp）",
+        icon: "fa-sailboat", 
+        href: "https://secure.sakura.ad.jp/rs/db/mysql5/?server=mysql3113.db.sakura.ne.jp", 
+        color: "bg-cyan-600", 
+        active: true,
+        external: true 
+    },
+    { 
         title: "勤務表・出張手当", 
         icon: "fa-calendar-check", 
         href: "#", 
@@ -84,6 +102,8 @@ const menus = [
             {menus.map((menu) => (
                 <a 
                     href={menu.active ? menu.href : "#"} 
+                    target={menu.external ? "_blank" : "_self"}
+                    rel={menu.external ? "noopener noreferrer" : ""}
                     class={`group flex items-center p-5 bg-white rounded-2xl border border-slate-200 shadow-sm transition-all duration-300 ${menu.active ? 'hover:shadow-lg hover:border-blue-400 hover:-translate-y-1' : 'opacity-60 grayscale-[0.5] cursor-not-allowed'}`}
                 >
                     <div class={`${menu.color} w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300`}>
@@ -92,8 +112,9 @@ const menus = [
                     
                     <div class="ml-4 flex-grow min-w-0">
                         <div class="flex items-center justify-between gap-2">
-                            <h2 class="text-base font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
-                                {menu.title}
+                            <h2 class="text-base font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                                <span class="block">{menu.title}</span>
+                                {menu.subtitle && <span class="block text-xs font-normal text-slate-500">{menu.subtitle}</span>}
                             </h2>
                             {menu.status && (
                                 <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded-md tracking-wider flex-shrink-0 uppercase">
@@ -104,7 +125,7 @@ const menus = [
                     </div>
 
                     {menu.active && (
-                        <i class="fa-solid fa-chevron-right text-slate-300 text-xs ml-2 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"></i>
+                        <i class={`fa-solid ${menu.external ? 'fa-arrow-up-right-from-square text-[10px]' : 'fa-chevron-right text-xs'} text-slate-300 ml-2 group-hover:text-blue-500 group-hover:translate-x-1 transition-all`}></i>
                     )}
                 </a>
             ))}

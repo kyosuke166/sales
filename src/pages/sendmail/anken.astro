@@ -38,7 +38,7 @@ import Layout from '../../layouts/Layout.astro';
               <th class="px-4 py-3 text-left text-xs font-bold text-slate-500">案件</th>
               <th class="px-4 py-3 text-left text-xs font-bold text-slate-500">条件</th>
               <th class="px-4 py-3 text-left text-xs font-bold text-slate-500">担当</th>
-              <th class="px-4 py-3 text-left text-xs font-bold text-slate-500">状態</th>
+              <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 whitespace-nowrap">状態</th>
               <th class="px-4 py-3 text-right text-xs font-bold text-slate-500">操作</th>
             </tr>
           </thead>
@@ -217,7 +217,7 @@ import Layout from '../../layouts/Layout.astro';
       <tr class="hover:bg-cyan-50/50">
         <td class="px-4 py-4 min-w-[260px]">
           <div class="font-bold text-slate-800">${esc(row.name)}</div>
-          <div class="text-xs text-slate-500 mt-1">${esc(row.overview || row.original || '').slice(0, 80)}</div>
+          <div class="text-xs text-slate-500 mt-1">${esc(row.skill_must || '').slice(0, 80)}</div>
         </td>
         <td class="px-4 py-4 text-sm text-slate-600 min-w-[220px]">
           <div>${esc(row.period)} / ${esc(row.area)}</div>
@@ -225,24 +225,26 @@ import Layout from '../../layouts/Layout.astro';
         </td>
         <td class="px-4 py-4 text-sm text-slate-600 min-w-[180px]">
           <div>${esc(row.company_name || '未紐づけ')}</div>
-          <div class="text-xs text-slate-400 mt-1">${esc(row.contact_name || '')} ${esc(row.contact_method || '')}</div>
+          <div class="text-xs text-slate-400 mt-1">
+            ${esc(row.contact_name || '')} 
+            <button type="button" class="sourceBtn text-cyan-600 hover:underline cursor-pointer ml-1 font-medium" data-received="${esc(row.received || '')}" data-company-name="${esc(row.company_name || '')}" data-contact-name="${esc(row.contact_name || '')}" data-contact-method="${esc(row.contact_method || '')}" data-original="${esc(row.original || '')}">${esc(row.contact_method || '')}</button>
+          </div>
         </td>
-        <td class="px-4 py-4">
+        <td class="px-4 py-4 whitespace-nowrap">
           <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass[row.status] || statusClass.draft}">${statusLabel[row.status] || row.status}</span>
           <div class="text-[11px] text-slate-400 mt-2">${esc(row.received || '')}</div>
         </td>
         <td class="px-4 py-4 text-right">
-          <div class="flex flex-wrap justify-end gap-2">
-            ${isBroadcastable ? `<a href="/sendmail/broadcast?id=${row.id}&type=anken" class="px-3 py-1.5 bg-cyan-600 text-white rounded-lg text-xs font-bold hover:bg-cyan-700">配信</a>` : `<button type="button" class="px-3 py-1.5 bg-slate-200 text-slate-400 rounded-lg text-xs font-bold cursor-not-allowed" disabled>配信</button>`}
-            <button class="sourceBtn px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:border-cyan-400" data-id="${row.id}" data-received="${esc(row.received || '')}" data-company-name="${esc(row.company_name || '')}" data-contact-name="${esc(row.contact_name || '')}" data-contact-method="${esc(row.contact_method || '')}" data-original="${esc(row.original || '')}">元の情報</button>
-            <button class="editBtn px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:border-cyan-400" data-id="${row.id}">編集</button>
+          <div class="flex flex-col items-end gap-1.5">
+            <button class="editBtn px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:border-cyan-400 w-16 text-center" data-id="${row.id}">編集</button>
+            ${isBroadcastable ? `<a href="/sendmail/broadcast?id=${row.id}&type=anken" class="px-3 py-1.5 bg-cyan-600 text-white rounded-lg text-xs font-bold hover:bg-cyan-700 w-16 text-center">配信</a>` : `<button type="button" class="px-3 py-1.5 bg-slate-200 text-slate-400 rounded-lg text-xs font-bold cursor-not-allowed w-16 text-center" disabled>配信</button>`}
           </div>
         </td>
       </tr>
     `;
     }).join('');
     document.querySelectorAll('.editBtn').forEach(btn => btn.addEventListener('click', () => openModal(btn.dataset.id)));
-    document.querySelectorAll('.sourceBtn').forEach(btn => btn.addEventListener('click', () => openSourceModal(btn.dataset)));
+    document.querySelectorAll('.sourceBtn').forEach(btn => btn.addEventListener('click', (e) => openSourceModal(e.currentTarget.dataset)));
   }
 
   async function openModal(id = null) {
@@ -450,8 +452,15 @@ import Layout from '../../layouts/Layout.astro';
   });
   document.getElementById('searchBtn').addEventListener('click', loadList);
   document.getElementById('statusFilter').addEventListener('change', loadList);
-  document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadList(); });
-
+  document.getElementById('searchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      loadList();
+    } else if (e.key === 'Escape') {
+      e.target.value = ''; // 入力文字を消去
+      loadList();          // 全件再表示
+      e.target.blur();     // フォーカスを外す（任意）
+    }
+  });
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
