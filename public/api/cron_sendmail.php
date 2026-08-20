@@ -72,19 +72,15 @@ try {
     $success_count = 0;
     $error_count = 0;
 
-    // PHPMailerの基本設定（db-config.php の定数をフル活用！）
+    // PHPMailerの基本設定（ローカルのPostfix経由で送信）
     $mail = new PHPMailer(true);
-    $mail->isSMTP();
-    $mail->Host       = SMTP_HOST;
-    $mail->SMTPAuth   = true;
-    $mail->Username   = SMTP_USER_SES;
-    $mail->Password   = SMTP_PASS_SES;
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; 
-    $mail->Port       = 465;
-    $mail->CharSet    = 'UTF-8';
-    $mail->SMTPKeepAlive = true; // 大量連続送信のキモ
+    $mail->isMail(); // ローカルのメール機能（sendmail/Postfix）を使う
+    $mail->CharSet = 'UTF-8';
     
+    // 差出人とReturn-Path（エラー戻り先）をses@sbt-inc.co.jpに指定
     $mail->setFrom(SMTP_FROM_SES, SMTP_FROM_NAME_SES);
+    $mail->Sender = SMTP_FROM_SES;
+    
     $mail->Subject = $task['subject'];
 
     // 複数件の送信ループ

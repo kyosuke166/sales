@@ -31,7 +31,7 @@ try {
         }
     }
 
-    // 2. 配信対象者の抽出
+    // 2. 配信対象者の抽出（エラー状態の判定条件を追加）
     $sql = "SELECT c.email, c.last_name, co.company_name 
             FROM crm_contact c
             JOIN crm_company co ON c.company_id = co.id
@@ -39,7 +39,11 @@ try {
             AND c.email IS NOT NULL 
             AND c.email != ''
             AND c.deleted IS NULL
-            AND co.deleted IS NULL";
+            AND co.deleted IS NULL
+            AND (
+                c.error_status = 'active' 
+                OR (c.error_status = 'suspend' AND (c.error_suspend_until IS NULL OR c.error_suspend_until < NOW()))
+            )";
 
     // 除外条件（選択された会社のグループ系列名と同じ会社をすべて除外）
     if ($exclude_group_name !== null) {

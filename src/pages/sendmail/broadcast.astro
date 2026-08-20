@@ -112,11 +112,11 @@ if (historyId) {
         </div>
 
         <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
-          <!-- 下書き保存ボタン（idを追加、type="button"） -->
+          <!-- 下書き保存ボタン -->
           <button type="button" id="saveDraftBtn" class="px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition">
             下書き保存
           </button>
-          <!-- 確認ボタン（type="submit"のまま。HTML5のrequiredバリデーションを効かせるため） -->
+          <!-- 確認ボタン -->
           <button type="submit" class="px-6 py-2.5 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition shadow-sm">
             配信内容を確認する
           </button>
@@ -125,7 +125,7 @@ if (historyId) {
     </div>
   </main>
 
-  <!-- ▼ 確認用モーダル (新規追加) ▼ -->
+  <!-- ▼ 確認用モーダル (予約対応版) ▼ -->
   <div id="confirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] z-[200] hidden flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
@@ -155,13 +155,33 @@ if (historyId) {
                   <div id="previewTo" class="whitespace-pre text-[11px] text-slate-500 h-64 overflow-auto bg-slate-50 p-3 rounded-lg border border-slate-100 font-mono"></div>
               </div>
           </div>
-          <div class="px-6 py-4 border-t border-slate-200 bg-white flex justify-end gap-3">
-              <button type="button" onclick="closeConfirmModal()" class="px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition">
-                  戻って修正する
-              </button>
-              <button type="button" id="executeSendBtn" class="px-8 py-2.5 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition shadow-sm flex items-center gap-2">
-                  <i class="fa-solid fa-paper-plane"></i> この内容で配信する
-              </button>
+          <!-- ▼ モーダル下部（即時 / 予約の選択UI） ▼ -->
+          <div class="px-6 py-4 border-t border-slate-200 bg-white flex flex-wrap md:flex-nowrap items-center justify-between gap-3">
+              <div class="flex items-center gap-3 flex-wrap">
+                  <label class="flex items-center gap-1.5 text-sm font-medium text-slate-700 cursor-pointer whitespace-nowrap">
+                      <input type="radio" name="sendTiming" value="instant" checked class="text-cyan-600 focus:ring-cyan-500" onchange="toggleSendTiming()">
+                      <span>すぐに配信する</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 text-sm font-medium text-slate-700 cursor-pointer whitespace-nowrap">
+                      <input type="radio" name="sendTiming" value="scheduled" class="text-cyan-600 focus:ring-cyan-500" onchange="toggleSendTiming()">
+                      <span>日時を指定して予約</span>
+                  </label>
+                  <!-- 予約日時入力（8〜18時・10分刻み） -->
+                  <div id="scheduledTimeWrapper" class="hidden items-center gap-1.5">
+                      <input type="date" id="scheduledDate" class="border border-slate-300 rounded-lg shadow-sm text-sm px-2 py-1.5 focus:ring-cyan-500 focus:border-cyan-500 bg-white text-slate-800">
+                      <select id="scheduledHour" class="border border-slate-300 rounded-lg shadow-sm text-sm px-2 py-1.5 focus:ring-cyan-500 focus:border-cyan-500 bg-white text-slate-800"></select>
+                      <span class="text-slate-500 font-bold">:</span>
+                      <select id="scheduledMinute" class="border border-slate-300 rounded-lg shadow-sm text-sm px-2 py-1.5 focus:ring-cyan-500 focus:border-cyan-500 bg-white text-slate-800"></select>
+                  </div>
+              </div>
+              <div class="flex items-center gap-3 whitespace-nowrap">
+                  <button type="button" onclick="closeConfirmModal()" class="px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition">
+                      戻って修正する
+                  </button>
+                  <button type="button" id="executeSendBtn" class="px-8 py-2.5 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition shadow-sm flex items-center gap-2">
+                      <i class="fa-solid fa-paper-plane"></i> <span id="executeBtnText">この内容で配信する</span>
+                  </button>
+              </div>
           </div>
       </div>
   </div>
@@ -207,7 +227,7 @@ if (historyId) {
       .filter(Boolean)
       .map((line) => {
         const cleaned = line.replace(/^・\s*/, '');
-        return withBullet ? `【　】${cleaned}` : cleaned;
+        return withBullet ? `【 】${cleaned}` : cleaned;
       });
   }
 
@@ -288,10 +308,10 @@ if (historyId) {
       const engineerLines = [];
       if (row.period) engineerLines.push(`稼働可：${row.period}`);
       if (row.area) engineerLines.push(`最寄駅：${row.area}`);
-      if (row.belong) engineerLines.push(`所属　：${row.belong}`);
-      if (row.price) engineerLines.push(`単金　：${row.price}`);
+      if (row.belong) engineerLines.push(`所属 ：${row.belong}`);
+      if (row.price) engineerLines.push(`単金 ：${row.price}`);
       if (row.base_hours) engineerLines.push(`精算幅：${row.base_hours}`);
-      if (row.hope) engineerLines.push(`希望　：${row.hope}`);
+      if (row.hope) engineerLines.push(`希望 ：${row.hope}`);
       if (engineerLines.length) lines.push(...engineerLines);
 
       const licenseText = normalizeValue(row.license);
@@ -319,23 +339,19 @@ if (historyId) {
       if (row.area) ankenLines.push(`作業場所：${row.area}`);
       if (row.work_time) ankenLines.push(`就業時間：${row.work_time}`);
       if (row.recruit) ankenLines.push(`募集人数：${row.recruit}`);
-      if (row.interview) ankenLines.push(`面談　　：${row.interview}`);
-      if (row.price) ankenLines.push(`単価　　：${row.price}`);
-      if (row.base_hours) ankenLines.push(`精算幅　：${row.base_hours}`);
-      // 備考
+      if (row.interview) ankenLines.push(`面談  ：${row.interview}`);
+      if (row.price) ankenLines.push(`単価  ：${row.price}`);
+      if (row.base_hours) ankenLines.push(`精算幅 ：${row.base_hours}`);
+      
       let noteStr = normalizeValue(row.note);
-      // 「外国籍不可」が含まれていなければ追記
       if (!noteStr.includes('外国籍不可')) {
         noteStr = noteStr ? noteStr + '\n外国籍不可' : '外国籍不可';
       }
-      // 2. 改行ごとに分割してインデント処理
       const noteLinesArr = noteStr.split(/\r?\n/);
       if (noteLinesArr.length > 0) {
-        // 1行目
-        ankenLines.push(`備考　　：${noteLinesArr[0]}`);
-        // 2行目以降 （全角スペース5つで頭を揃える）
+        ankenLines.push(`備考  ：${noteLinesArr[0]}`);
         for (let i = 1; i < noteLinesArr.length; i++) {
-          ankenLines.push(`　　　　　${noteLinesArr[i]}`);
+          ankenLines.push(`     ${noteLinesArr[i]}`);
         }
       }
 
@@ -379,7 +395,36 @@ if (historyId) {
     return footer.join('\n');
   }
 
-  // 1. 履歴からの復元
+  // 予約時間のセレクトボックス初期化（8〜18時、10分刻み）
+  function initScheduledSelects() {
+    const hourSelect = document.getElementById('scheduledHour');
+    const minuteSelect = document.getElementById('scheduledMinute');
+    
+    if (hourSelect.children.length === 0) {
+      for (let h = 8; h <= 18; h++) {
+        const opt = document.createElement('option');
+        opt.value = String(h).padStart(2, '0');
+        opt.textContent = `${h}時`;
+        hourSelect.appendChild(opt);
+      }
+    }
+
+    if (minuteSelect.children.length === 0) {
+      for (let m = 0; m < 60; m += 10) {
+        const opt = document.createElement('option');
+        opt.value = String(m).padStart(2, '0');
+        opt.textContent = String(m).padStart(2, '0') + '分';
+        minuteSelect.appendChild(opt);
+      }
+    }
+
+    const dateInput = document.getElementById('scheduledDate');
+    if (!dateInput.value) {
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.value = today;
+    }
+  }
+
   async function loadHistoryData(hId) {
     document.getElementById('pageSubTitle').textContent = 'History Archive';
     document.getElementById('pageTitle').textContent = '配信履歴の確認・再配信';
@@ -392,14 +437,12 @@ if (historyId) {
       const row = result.data;
       
       if (!row.engineer_id && !row.anken_id) {
-        metaPanel.classList.add('hidden'); // フリー配信の履歴ならメタ情報非表示
+        metaPanel.classList.add('hidden');
       } else {
-        // 履歴からの種別判定と会社IDを復元
         type = row.engineer_id ? 'engineer' : 'anken';
         currentCompanyId = row.company_id || null;
-        document.getElementById('targetButtons').classList.remove('hidden'); // ボタンを表示
+        document.getElementById('targetButtons').classList.remove('hidden');
 
-        // マスターと同じ情報元情報を表示する
         document.getElementById('labelCol1').textContent = '情報受領日';
         document.getElementById('infoReceived').textContent = formatDate(row.received || '');
         document.getElementById('labelCol2').textContent = '情報元会社名';
@@ -421,18 +464,15 @@ if (historyId) {
     }
   }
 
-  // 2. フリーメール作成モード（署名以外すべて空白）
   function loadFreeMode() {
     document.title = 'フリーメール作成 | メール配信管理';
     document.getElementById('pageSubTitle').textContent = 'Free Broadcast';
     document.getElementById('pageTitle').textContent = 'フリーメール作成';
     document.getElementById('pageIcon').className = 'w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center';
     
-    // メタ情報パネルは不要なので隠す
     metaPanel.classList.add('hidden');
     document.getElementById('detailPanel').classList.add('hidden');
 
-    // 署名以外を空にする
     subjectInput.value = '';
     introInput.value = '';
     bodyInput.value = '';
@@ -440,7 +480,6 @@ if (historyId) {
     sendtoInput.value = '';
   }
 
-  // 3. 案件 / エンジニアからの通常マスター読込
   async function loadMasterData() {
     const titleText = isEngineer ? 'エンジニア配信メール作成' : '案件配信メール作成';
     document.title = `${titleText} | メール配信管理`;
@@ -464,7 +503,6 @@ if (historyId) {
       
       const row = result.data || {};
       currentCompanyId = row.company_id || null;
-      // 案件・エンジニアの場合は便利ボタンを表示する
       document.getElementById('targetButtons').classList.remove('hidden');
       
       document.getElementById('infoReceived').textContent = formatDate(row.received || '');
@@ -473,7 +511,6 @@ if (historyId) {
       document.getElementById('infoMethod').textContent = row.contact_method || '未設定';
       document.getElementById('detailBody').textContent = row.original || '元情報はありません。';
 
-      // 件名・本文などの自動生成を復帰
       subjectInput.value = buildSubject(row);
       introInput.value = buildIntro(row);
       bodyInput.value = buildBody(row);
@@ -483,7 +520,6 @@ if (historyId) {
     }
   }
 
-  // 宛先の一括取得
   async function fetchTargetList(targetType, btnEl) {
     if (!confirm('宛先リストを上書きします。よろしいですか？')) return;
 
@@ -493,7 +529,7 @@ if (historyId) {
 
     try {
       const qs = new URLSearchParams({
-        type: type, // 'anken' または 'engineer'
+        type: type,
         target_type: targetType,
         exclude_company_id: currentCompanyId || ''
       });
@@ -503,7 +539,6 @@ if (historyId) {
 
       if (json.status === 'success') {
         sendtoInput.value = json.data;
-        // アラートで件数をお知らせする（少しUX向上）
         alert(`${json.count}件の宛先をセットしました。`);
       } else {
         alert('取得に失敗しました: ' + json.message);
@@ -516,7 +551,6 @@ if (historyId) {
     }
   }
 
-  // 初期化の振り分け
   if (historyId) {
     loadHistoryData(historyId);
   } else if (isFree) {
@@ -533,12 +567,12 @@ if (historyId) {
       ? '<i class="fa-solid fa-up-right-from-square mr-1"></i>詳細'
       : '<i class="fa-solid fa-chevron-up mr-1"></i>閉じる';
   });
-const mailForm = document.getElementById('mailForm');
+
+  const mailForm = document.getElementById('mailForm');
   const confirmModal = document.getElementById('confirmModal');
 
-  // 確認ボタン（submit）を押した時の処理
   mailForm.addEventListener('submit', (e) => {
-    e.preventDefault(); // 通常の画面遷移をストップ
+    e.preventDefault();
 
     const subj = subjectInput.value;
     const intro = introInput.value;
@@ -546,7 +580,6 @@ const mailForm = document.getElementById('mailForm');
     const sig = signatureInput.value;
     const divider = "-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-・-";
 
-    // メール本文を組み立て
     const fullBody = [
       "株式会社SBT ご担当者様",
       "",
@@ -564,14 +597,20 @@ const mailForm = document.getElementById('mailForm');
       sig
     ].join('\n');
     
-    // 空行を除外して宛先件数を計算
     const toList = sendtoInput.value.split('\n').filter(l => l.trim() !== '');
 
-    // モーダルへ出力
     document.getElementById('previewSubject').textContent = subj;
     document.getElementById('previewBody').textContent = fullBody;
     document.getElementById('previewToCount').innerHTML = `送信予定: <span class="text-cyan-600 font-bold text-lg">${toList.length}</span> 件`;
     document.getElementById('previewTo').textContent = toList.join('\n');
+
+    // 初期状態として「すぐに配信する」を選択状態にリセット
+    document.querySelector('input[name="sendTiming"][value="instant"]').checked = true;
+    document.getElementById('scheduledTimeWrapper').classList.add('hidden');
+    document.getElementById('executeBtnText').textContent = 'この内容で配信する';
+
+    // セレクトボックスの初期化
+    initScheduledSelects();
 
     confirmModal.classList.remove('hidden');
   });
@@ -580,11 +619,48 @@ const mailForm = document.getElementById('mailForm');
     confirmModal.classList.add('hidden');
   }
 
-  // サーバーへ送信（下書き or 配信）
+  // 即時・予約の切り替え表示制御
+  function toggleSendTiming() {
+    const isScheduled = document.querySelector('input[name="sendTiming"]:checked').value === 'scheduled';
+    const wrapper = document.getElementById('scheduledTimeWrapper');
+    const btnText = document.getElementById('executeBtnText');
+
+    if (isScheduled) {
+      wrapper.classList.remove('hidden');
+      wrapper.classList.add('flex');
+      btnText.textContent = '指定日時で予約する';
+    } else {
+      wrapper.classList.remove('flex');
+      wrapper.classList.add('hidden');
+      btnText.textContent = 'この内容で配信する';
+    }
+  }
+
   async function submitAction(action) {
-    // ボタンの二重クリック防止
-    const btn = event.currentTarget;
+    const btn = document.getElementById('executeSendBtn');
     const originalText = btn.innerHTML;
+
+    let senddateVal = '';
+    if (action === 'sent') {
+      const timing = document.querySelector('input[name="sendTiming"]:checked').value;
+      if (timing === 'scheduled') {
+        const dateVal = document.getElementById('scheduledDate').value;
+        const hourVal = document.getElementById('scheduledHour').value;
+        const minVal = document.getElementById('scheduledMinute').value;
+
+        if (!dateVal) {
+          alert('予約日を指定してください。');
+          return;
+        }
+        senddateVal = `${dateVal} ${hourVal}:${minVal}:00`;
+        action = 'scheduled';
+      }
+    }
+
+    if (!confirm(action === 'scheduled' ? '指定した日時で予約登録します。よろしいですか？' : '配信処理を実行します。よろしいですか？')) {
+      return;
+    }
+
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 処理中...';
     btn.disabled = true;
 
@@ -593,8 +669,8 @@ const mailForm = document.getElementById('mailForm');
     formData.append('type', type);
     if (id) formData.append('id', id);
     if (historyId) formData.append('history_id', historyId);
+    if (senddateVal) formData.append('senddate', senddateVal);
 
-    // プレビュー用に組み立てた完成形テキストを formData の full_body として追加
     const fullBodyText = document.getElementById('previewBody').textContent;
     formData.append('full_body', fullBodyText);
 
@@ -607,8 +683,8 @@ const mailForm = document.getElementById('mailForm');
       const result = await res.json();
       
       if (result.status === 'success') {
-        alert(action === 'draft' ? '下書き保存しました。' : '配信処理を受け付けました！');
-        window.location.href = '/sendmail'; // 一覧画面へ戻る
+        alert(action === 'draft' ? '下書き保存しました。' : (action === 'scheduled' ? '予約配信を受け付けました！' : '配信処理を受け付けました！'));
+        window.location.href = '/sendmail';
       } else {
         alert('エラーが発生しました: ' + result.message);
         btn.innerHTML = originalText;
@@ -621,8 +697,6 @@ const mailForm = document.getElementById('mailForm');
     }
   }
 
-  // イベントリスナーの登録
   document.getElementById('saveDraftBtn').addEventListener('click', () => submitAction('draft'));
   document.getElementById('executeSendBtn').addEventListener('click', () => submitAction('sent'));
-
 </script>

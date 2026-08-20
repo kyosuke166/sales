@@ -79,6 +79,7 @@ import Layout from '../../layouts/Layout.astro';
 
     <!-- 下部：配信履歴一覧セクション -->
     <section class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+      <!-- ▼ ここに「flex items-center justify-between mb-5」を使って左右に配置します -->
       <div class="flex items-center justify-between mb-5">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-sm">
@@ -86,6 +87,16 @@ import Layout from '../../layouts/Layout.astro';
           </div>
           <h2 class="text-base font-bold text-slate-800">配信履歴</h2>
         </div>
+
+        <!-- バウンス処理 即時実行ボタン -->
+        <button 
+          type="button" 
+          onclick="runBounceProcess()"
+          id="bounceRunBtn"
+          class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition border border-slate-200 shadow-sm flex items-center gap-2 outline-none">
+          <i class="fa-solid fa-rotate text-slate-500" id="bounceIcon"></i>
+          <span>バウンス処理を手動実行</span>
+        </button>
       </div>
 
       <div class="overflow-x-auto">
@@ -142,7 +153,7 @@ import Layout from '../../layouts/Layout.astro';
               <div class="w-3 h-3 rounded-full bg-rose-500"></div>
               <div class="w-3 h-3 rounded-full bg-amber-500"></div>
               <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
-              <span class="text-[10px] text-slate-500 font-mono ml-2">server.log (tail -f)</span>
+              <span class="text-[10px] text-slate-500 font-mono ml-2">server.log</span>
             </div>
             <div id="progressLogViewer" class="h-64 overflow-y-auto font-mono text-[11px] text-emerald-400 whitespace-pre-wrap leading-relaxed tracking-wider">
               waiting for logs...
@@ -323,6 +334,38 @@ import Layout from '../../layouts/Layout.astro';
 
     } catch (e) {
       console.error(e);
+    }
+  }
+
+  // --- バウンス処理の手動即時実行用 ---
+  async function runBounceProcess() {
+    const btn = document.getElementById('bounceRunBtn');
+    const icon = document.getElementById('bounceIcon');
+    
+    if (!confirm('バウンスメールの自動処理を今すぐ実行しますか？')) {
+      return;
+    }
+
+    try {
+      // ボタンを無効化してスピナーアイコンを回す
+      btn.disabled = true;
+      icon.classList.add('fa-spin');
+      
+      // cron_errormail.php を呼び出す
+      const res = await fetch('/api/cron_errormail.php', { method: 'POST', credentials: 'include' });
+      
+      if (res.ok) {
+        alert('バウンスメールの処理が正常に完了しました。ログファイルとCRMの状態を確認してください。');
+      } else {
+        alert('処理中にエラーが発生しました。');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('通信に失敗しました。');
+    } finally {
+      // ボタンを元に戻す
+      btn.disabled = false;
+      icon.classList.remove('fa-spin');
     }
   }
 </script>

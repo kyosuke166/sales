@@ -233,26 +233,45 @@ import Layout from '../../layouts/Layout.astro';
       const isBroadcastable = row.status === 'active';
       
       // エンジニア列
-      // 1段目：イニシャル ＋ スキルシートアイコン ＋ （年齢 / 性別 / 国籍）
+      // 1段目：イニシャル (+ 漢字氏名) ＋ スキルシートアイコン ＋ （年齢 / 性別 / 国籍※日本以外のみ）
+      let nameDisplayHtml = esc(row.name);
+      if (row.last_name || row.first_name) {
+        const fullName = `${row.last_name || ''} ${row.first_name || ''}`.trim();
+        const kanaName = `${row.last_kana || ''} ${row.first_kana || ''}`.trim();
+        const titleAttr = kanaName ? `title="読み: ${kanaName}"` : '';
+        nameDisplayHtml = `${esc(row.name)} <span class="text-slate-700 font-medium cursor-help" ${titleAttr}>(${esc(fullName)})</span>`;
+      }
+
       const initialHtml = row.skillsheet 
-        ? `<a href="${esc(row.skillsheet)}" target="_blank" class="text-emerald-600 hover:underline inline-flex items-center gap-1 font-bold">${esc(row.name)} <i class="fa-solid fa-up-right-from-square text-[10px]"></i></a>`
-        : `<span class="font-bold text-slate-800">${esc(row.name)}</span>`;
+        ? `<a href="${esc(row.skillsheet)}" target="_blank" class="text-emerald-600 hover:underline inline-flex items-center gap-1 font-bold">${nameDisplayHtml} <i class="fa-solid fa-up-right-from-square text-[10px]"></i></a>`
+        : `<span class="font-bold text-slate-800">${nameDisplayHtml}</span>`;
       
-      const profileDetails = [row.age, row.gender, row.nationality].filter(Boolean).join(' / ');
+      // 年齢の装飾（生年月日があれば色をつけてオンマウスで生年月日を表示）
+      let ageDisplay = esc(row.age || '');
+      if (row.birth_date && ageDisplay) {
+        ageDisplay = `<span class="text-emerald-600 font-semibold cursor-help underline decoration-dotted" title="生年月日: ${esc(row.birth_date)}">${ageDisplay}</span>`;
+      }
+
+      // 国籍が「日本」以外の場合のみ表示対象に含める
+      const nat = row.nationality && row.nationality !== '日本' ? esc(row.nationality) : '';
+
+      const profileDetails = [ageDisplay, esc(row.gender || ''), nat].filter(Boolean).join(' / ');
       const topEngineerInfo = profileDetails ? `${initialHtml} <span class="text-xs text-slate-500">（${profileDetails}）</span>` : initialHtml;
 
-      // 2段目：所属 / 最寄駅
-      const bottomEngineerInfo = `${esc(row.belong || '---')} / ${esc(row.area || '---')}`;
+      // 2段目：所属 / 最寄駅（住所があれば最寄駅に色をつけてオンマウスで住所を表示）
+      let areaDisplay = esc(row.area || '---');
+      if (row.address && row.area) {
+        areaDisplay = `<span class="text-emerald-600 font-semibold cursor-help underline decoration-dotted" title="住所: ${esc(row.address)}">${areaDisplay}</span>`;
+      }
+      const bottomEngineerInfo = `${esc(row.belong || '---')} / ${areaDisplay}`;
 
       // スキルと金額列（全2段構成）
-      // 1段目：稼働開始時期 / 金額 / 経験年数
       const topConditionParts = [row.period, row.price + (row.base_hours ? ' / ' + row.base_hours : ''), row.experience_years ? `経験${row.experience_years}` : ''].filter(Boolean);
-      // 2段目：スキル
       const bottomConditionSkill = esc(row.skill || '').slice(0, 80);
 
       return `
       <tr class="hover:bg-emerald-50/50">
-        <td class="px-4 py-4 min-w-[240px]">
+        <td class="px-4 py-4 min-w-[280px]">
           <div>${topEngineerInfo}</div>
           <div class="text-xs text-slate-400 mt-1">${bottomEngineerInfo}</div>
         </td>
@@ -288,7 +307,6 @@ import Layout from '../../layouts/Layout.astro';
     document.getElementById('entryForm').reset();
     document.getElementById('f_id').value = '';
 
-    // ラジオボタンの初期化（デフォルトを下書きに）
     document.querySelector('input[name="status"][value="draft"]').checked = true;
     document.querySelector('input[name="gender"][value=""]').checked = true;
 
@@ -301,7 +319,6 @@ import Layout from '../../layouts/Layout.astro';
       if (result.status !== 'success') return alert(result.message || '読み込みエラー');
       fields.forEach(key => {
         if (key === 'status' || key === 'gender') {
-          // ラジオボタンへの値セット
           const radio = document.querySelector(`input[name="${key}"][value="${result.data[key] || ''}"]`);
           if (radio) radio.checked = true;
         } else {
@@ -493,9 +510,9 @@ import Layout from '../../layouts/Layout.astro';
     if (e.key === 'Enter') {
       loadList();
     } else if (e.key === 'Escape') {
-      e.target.value = ''; // 入力文字を消去
-      loadList();          // 全件再表示
-      e.target.blur();     // フォーカスを外す（任意）
+      e.target.value = '';
+      loadList();
+      e.target.blur();
     }
   });
 

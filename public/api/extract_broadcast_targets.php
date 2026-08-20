@@ -37,7 +37,7 @@ try {
         }
     }
 
-    // 2. CRMの対象者を抽出
+    // 2. CRMの対象者を抽出（エラー状態の判定条件を追加）
     $sql = "SELECT c.email, c.last_name, co.company_name 
             FROM crm_contact c
             JOIN crm_company co ON c.company_id = co.id
@@ -45,7 +45,11 @@ try {
             AND c.email IS NOT NULL 
             AND c.email != ''
             AND c.deleted IS NULL
-            AND co.deleted IS NULL";
+            AND co.deleted IS NULL
+            AND (
+                c.error_status = 'active' 
+                OR (c.error_status = 'suspend' AND (c.error_suspend_until IS NULL OR c.error_suspend_until < NOW()))
+            )";
 
     // ターゲット種別による絞り込み (sort: 0=代表, 1=役員, 2=共通, 3=担当)
     if ($target_type === 'common') {
