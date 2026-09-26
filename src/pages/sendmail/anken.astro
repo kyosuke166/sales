@@ -136,7 +136,7 @@ import Layout from '../../layouts/Layout.astro';
 
           <div>
             <label class="block text-sm font-bold text-slate-700 mb-1">募集人数</label>
-            <input type="number" name="recruit" id="f_recruit" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
+            <input name="recruit" id="f_recruit" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
           </div>
           <div>
             <label class="block text-sm font-bold text-slate-700 mb-1">面談回数</label>
@@ -213,26 +213,28 @@ import Layout from '../../layouts/Layout.astro';
     }
     body.innerHTML = rows.map(row => {
       const isBroadcastable = row.status === 'active';
+      const isClosed = row.status === 'closed'; // 追加：終了しているかどうか
+      
       return `
-      <tr class="hover:bg-cyan-50/50">
+      <tr class="hover:bg-cyan-50/50 ${isClosed ? 'bg-slate-300/90 text-slate-500' : ''}">
         <td class="px-4 py-4 min-w-[260px]">
-          <div class="font-bold text-slate-800">${esc(row.name)}</div>
-          <div class="text-xs text-slate-500 mt-1">${esc(row.skill_must || '').slice(0, 80)}</div>
+          <div class="font-bold ${isClosed ? 'text-slate-600' : 'text-slate-800'}">${esc(row.name)}</div>
+          <div class="text-xs ${isClosed ? 'text-slate-500' : 'text-slate-500'} mt-1">${esc(row.skill_must || '').slice(0, 80)}</div>
         </td>
-        <td class="px-4 py-4 text-sm text-slate-600 min-w-[220px]">
+        <td class="px-4 py-4 text-sm ${isClosed ? 'text-slate-500' : 'text-slate-600'} min-w-[220px]">
           <div>${esc(row.period)} / ${esc(row.area)}</div>
-          <div class="text-xs text-slate-400 mt-1">${esc(row.price)} ${row.base_hours ? ' / ' + esc(row.base_hours) : ''}</div>
+          <div class="text-xs ${isClosed ? 'text-slate-500' : 'text-slate-400'} mt-1">${esc(row.price)} ${row.base_hours ? ' / ' + esc(row.base_hours) : ''}</div>
         </td>
-        <td class="px-4 py-4 text-sm text-slate-600 min-w-[180px]">
+        <td class="px-4 py-4 text-sm ${isClosed ? 'text-slate-500' : 'text-slate-600'} min-w-[180px]">
           <div>${esc(row.company_name || '未紐づけ')}</div>
           <div class="text-xs text-slate-400 mt-1">
             ${esc(row.contact_name || '')} 
-            <button type="button" class="sourceBtn text-cyan-600 hover:underline cursor-pointer ml-1 font-medium" data-received="${esc(row.received || '')}" data-company-name="${esc(row.company_name || '')}" data-contact-name="${esc(row.contact_name || '')}" data-contact-method="${esc(row.contact_method || '')}" data-original="${esc(row.original || '')}">${esc(row.contact_method || '')}</button>
+            <button type="button" class="sourceBtn ${isClosed ? 'text-slate-500' : 'text-cyan-600'} hover:underline cursor-pointer ml-1 font-medium" data-received="${esc(row.received || '')}" data-company-name="${esc(row.company_name || '')}" data-contact-name="${esc(row.contact_name || '')}" data-contact-method="${esc(row.contact_method || '')}" data-original="${esc(row.original || '')}">${esc(row.contact_method || '')}</button>
           </div>
         </td>
         <td class="px-4 py-4 whitespace-nowrap">
           <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass[row.status] || statusClass.draft}">${statusLabel[row.status] || row.status}</span>
-          <div class="text-[11px] text-slate-400 mt-2">${esc(row.received || '')}</div>
+          <div class="text-[11px] ${isClosed ? 'text-slate-500' : 'text-slate-400'} mt-2">${esc(row.received || '')}</div>
         </td>
         <td class="px-4 py-4 text-right">
           <div class="flex flex-col items-end gap-1.5">

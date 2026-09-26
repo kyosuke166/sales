@@ -178,12 +178,15 @@ import Layout from '../../layouts/Layout.astro';
       }
 
       tbody.innerHTML = json.data.map(item => {
+        // ★ 各行ごとに終了ステータス（closed）かどうかを判定
+        const isClosed = String(item.target_status || '').trim().toLowerCase() === 'closed';
+
         // ▼ 1. 種別バッジの判定
         let typeBadge = '<span class="px-2 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-600 rounded">フリー</span>';
         if (item.engineer_id) {
-          typeBadge = '<span class="px-2 py-0.5 text-xs font-bold bg-rose-50 text-rose-600 rounded">エンジニア</span>';
+          typeBadge = `<span class="px-2 py-0.5 text-xs font-bold ${isClosed ? 'bg-slate-200 text-slate-500' : 'bg-rose-50 text-rose-600'} rounded">エンジニア</span>`;
         } else if (item.anken_id) {
-          typeBadge = '<span class="px-2 py-0.5 text-xs font-bold bg-blue-50 text-blue-600 rounded">案件</span>';
+          typeBadge = `<span class="px-2 py-0.5 text-xs font-bold ${isClosed ? 'bg-slate-200 text-slate-500' : 'bg-blue-50 text-blue-600'} rounded">案件</span>`;
         }
 
         // ▼ 2. 状態（ステータス）バッジと、ボタンテキストの判定
@@ -193,26 +196,22 @@ import Layout from '../../layouts/Layout.astro';
 
         switch (item.status) {
           case 'draft':
-            // 下書き：黄色系（作業のやり残し・注意喚起）
             statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-amber-50 text-amber-600 rounded border border-amber-200">下書き</span>';
             actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded transition shadow-sm"><i class="fa-solid fa-pen mr-1 text-slate-400"></i>再開する</a>`;
             break;
           case 'sent':
-            // 送信済：グレー系（完了した過去のデータとして視覚的なノイズを減らす）
             statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-slate-100 text-slate-500 rounded border border-slate-200">送信済</span>';
             actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded transition border border-slate-200">確認・再配信</a>`;
             break;
           case 'scheduled':
-            // 予約中：緑系（正常にスケジュールされて待機している安心感）
             statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-emerald-50 text-emerald-600 rounded border border-emerald-200">予約中</span>';
             actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-white border border-emerald-200 hover:bg-emerald-50 text-emerald-700 text-xs font-bold rounded transition">確認・変更</a>`;
             break;
           case 'error':
-            // エラー：赤系＆3文字（直感的な警告）
             statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-rose-50 text-rose-600 rounded border border-rose-200">エラー</span>';
             actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded transition">詳細・再送</a>`;
             break;
-          case 'sending': // ★ 新規追加！
+          case 'sending':
             statusBadge = '<span class="px-2 py-1 text-[10px] font-bold bg-cyan-50 text-cyan-600 rounded border border-cyan-200 animate-pulse"><i class="fa-solid fa-spinner fa-spin mr-1"></i>配信中</span>';
             actionBtn = `<button onclick="openProgressModal(${item.id})" class="px-3 py-1.5 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-cyan-700 text-xs font-bold rounded transition shadow-sm outline-none"><i class="fa-solid fa-satellite-dish mr-1"></i>進捗</button>`;
             break;
@@ -221,11 +220,11 @@ import Layout from '../../layouts/Layout.astro';
             actionBtn = `<a href="${targetUrl}" class="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded transition">詳細</a>`;
         }
 
-        // ▼ 3. ログダウンロードボタンの判定（送信済かつ total_count が存在する場合）
+        // ▼ 3. ログダウンロードボタンの判定
         let logDownloadBtn = '';
         if (item.status === 'sent' && item.total_count && Number(item.total_count) > 0) {
-          const tooltipText = `全体: ${item.total_count}件 / 成功: ${item.success_count}件 / 失敗: ${item.error_count}件`;
           const formattedId = String(item.id).padStart(6, '0');
+          const tooltipText = `No.${item.id} 全体:${item.total_count}件 / 成功:${item.success_count}件 / 失敗:${item.error_count}件`;
           const logUrl = `/storage/log/sendmail_history_${formattedId}.csv`;
           logDownloadBtn = `
             <a href="${logUrl}" 
@@ -237,20 +236,18 @@ import Layout from '../../layouts/Layout.astro';
             </a>`;
         }
 
-        // ▼ 4. 行の出力（状態カラムを追加）
+        // ▼ 4. 各行ごとの判定結果（isClosed）をクラスに反映
         return `
-          <tr class="hover:bg-slate-50 transition">
-            <td class="py-3 px-4 whitespace-nowrap text-slate-500 text-xs">${item.senddate}</td>
+          <tr class="transition ${isClosed ? 'bg-slate-300 text-slate-500' : 'hover:bg-slate-50'}">
+            <td class="py-3 px-4 whitespace-nowrap text-xs text-slate-500">${item.senddate}</td>
             <td class="py-3 px-4 whitespace-nowrap">${statusBadge}</td>
             <td class="py-3 px-4 whitespace-nowrap">${typeBadge}</td>
-            <td class="py-3 px-4 font-bold text-slate-800 max-w-md truncate">${item.subject}</td>
+            <td class="py-3 px-4 font-bold ${isClosed ? 'text-slate-600' : 'text-slate-800'} max-w-md truncate">${item.subject}</td>
             <td class="py-3 px-4 whitespace-nowrap">
-              <!-- ↓↓↓ ここのdivと ${logDownloadBtn} が入っているか確認！ ↓↓↓ -->
               <div class="flex items-center gap-2">
                 ${actionBtn}
                 ${logDownloadBtn}
               </div>
-              <!-- ↑↑↑ ------------------------------------------ ↑↑↑ -->
             </td>
           </tr>
         `;

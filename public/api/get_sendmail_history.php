@@ -16,7 +16,7 @@ try {
         LEFT JOIN crm_company co ON COALESCE(a.company_id, e.company_id) = co.id
         LEFT JOIN crm_contact c ON COALESCE(a.contact_id, e.contact_id) = c.id";
 
-    // 1. 特定の履歴IDが指定された場合（詳細取得：すべてのカラムを取得）
+    // 1. 特定の履歴IDが指定された場合（詳細取得）
     if ($id > 0) {
         $sql = "SELECT
                 h.*,
@@ -30,7 +30,8 @@ try {
                     WHEN h.engineer_id IS NOT NULL THEN e.name
                     WHEN h.anken_id IS NOT NULL THEN a.name
                     ELSE NULL 
-                END AS target_name
+                END AS target_name,
+                COALESCE(e.status, a.status) AS target_status
             " . $baseJoin . " WHERE h.id = :id";
 
         $stmt = $pdo->prepare($sql);
@@ -43,7 +44,7 @@ try {
         exit;
     }
 
-    // 2. 履歴一覧の取得（一覧用：巨大な target や body を除外して軽量化・高速化）
+    // 2. 履歴一覧の取得
     $sql = "SELECT
             h.id,
             h.senddate,
@@ -62,7 +63,8 @@ try {
                 WHEN h.engineer_id IS NOT NULL THEN e.name
                 WHEN h.anken_id IS NOT NULL THEN a.name
                 ELSE NULL 
-            END AS target_name
+            END AS target_name,
+            COALESCE(e.status, a.status) AS target_status
         " . $baseJoin . " 
         ORDER BY h.senddate DESC, h.id DESC 
         LIMIT 50";

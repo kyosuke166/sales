@@ -227,7 +227,7 @@ if (historyId) {
       .filter(Boolean)
       .map((line) => {
         const cleaned = line.replace(/^・\s*/, '');
-        return withBullet ? `【 】${cleaned}` : cleaned;
+        return withBullet ? `【　】${cleaned}` : cleaned;
       });
   }
 
@@ -308,10 +308,10 @@ if (historyId) {
       const engineerLines = [];
       if (row.period) engineerLines.push(`稼働可：${row.period}`);
       if (row.area) engineerLines.push(`最寄駅：${row.area}`);
-      if (row.belong) engineerLines.push(`所属 ：${row.belong}`);
-      if (row.price) engineerLines.push(`単金 ：${row.price}`);
+      if (row.belong) engineerLines.push(`所属　：${row.belong}`);
+      if (row.price) engineerLines.push(`単金　：${row.price}`);
       if (row.base_hours) engineerLines.push(`精算幅：${row.base_hours}`);
-      if (row.hope) engineerLines.push(`希望 ：${row.hope}`);
+      if (row.hope) engineerLines.push(`希望　：${row.hope}`);
       if (engineerLines.length) lines.push(...engineerLines);
 
       const licenseText = normalizeValue(row.license);
@@ -339,9 +339,9 @@ if (historyId) {
       if (row.area) ankenLines.push(`作業場所：${row.area}`);
       if (row.work_time) ankenLines.push(`就業時間：${row.work_time}`);
       if (row.recruit) ankenLines.push(`募集人数：${row.recruit}`);
-      if (row.interview) ankenLines.push(`面談  ：${row.interview}`);
-      if (row.price) ankenLines.push(`単価  ：${row.price}`);
-      if (row.base_hours) ankenLines.push(`精算幅 ：${row.base_hours}`);
+      if (row.interview) ankenLines.push(`面談　　：${row.interview}`);
+      if (row.price) ankenLines.push(`単価　　：${row.price}`);
+      if (row.base_hours) ankenLines.push(`精算幅　：${row.base_hours}`);
       
       let noteStr = normalizeValue(row.note);
       if (!noteStr.includes('外国籍不可')) {
@@ -349,9 +349,9 @@ if (historyId) {
       }
       const noteLinesArr = noteStr.split(/\r?\n/);
       if (noteLinesArr.length > 0) {
-        ankenLines.push(`備考  ：${noteLinesArr[0]}`);
+        ankenLines.push(`備考　　：${noteLinesArr[0]}`);
         for (let i = 1; i < noteLinesArr.length; i++) {
-          ankenLines.push(`     ${noteLinesArr[i]}`);
+          ankenLines.push(`　　　　　${noteLinesArr[i]}`);
         }
       }
 
@@ -386,8 +386,8 @@ if (historyId) {
       '   LINE： https://line.me/ti/p/bn7frp0fRL',
       '_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/',
       '',
-      '▼協賛交流会(9月)',
-      'https://www.kokuchpro.com/event/146432875406b42c12aa8b959394f381/',
+      '▼協賛交流会(11月)',
+      'https://www.kokuchpro.com/event/12b10f5c46f08350002f8caef61f1a5b/',
       '',
       '▼情報交換LINE-Gr.',
       'https://tinyurl.com/yts48uuu'

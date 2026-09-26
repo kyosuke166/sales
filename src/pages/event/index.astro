@@ -525,8 +525,8 @@ import Layout from '../../layouts/Layout.astro';
 
       const container = document.querySelector('#event-list');
       const now = new Date();
-      const twoMonthsAgo = new Date();
-      twoMonthsAgo.setMonth(now.getMonth() - 2);
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(now.getMonth() - 1);
 
       // グルーピング
       const grouped = {};
@@ -537,7 +537,7 @@ import Layout from '../../layouts/Layout.astro';
         if (!grouped[year]) grouped[year] = { months: {}, hasRecent: false };
         if (!grouped[year].months[month]) grouped[year].months[month] = [];
         grouped[year].months[month].push(e);
-        if (d >= twoMonthsAgo) grouped[year].hasRecent = true;
+        if (d >= oneMonthAgo) grouped[year].hasRecent = true;
       });
 
       let html = '';
@@ -548,7 +548,7 @@ import Layout from '../../layouts/Layout.astro';
                   <div class="year-content">`;
         for (const month in grouped[year].months) {
           const events = grouped[year].months[month];
-          const monthClosed = new Date(events[events.length-1].event_date) >= twoMonthsAgo ? '' : 'closed';
+          const monthClosed = new Date(events[events.length-1].event_date) >= oneMonthAgo ? '' : 'closed';
           html += `
             <div class="month-section ${monthClosed}" data-node="month">
               <h4 class="month-title" onclick="this.parentElement.classList.toggle('closed')">${month}月</h4>

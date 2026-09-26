@@ -231,64 +231,59 @@ import Layout from '../../layouts/Layout.astro';
     }
     body.innerHTML = rows.map(row => {
       const isBroadcastable = row.status === 'active';
+      const isClosed = row.status === 'closed'; // 追加：終了しているかどうか
       
       // エンジニア列
-      // 1段目：イニシャル (+ 漢字氏名) ＋ スキルシートアイコン ＋ （年齢 / 性別 / 国籍※日本以外のみ）
       let nameDisplayHtml = esc(row.name);
       if (row.last_name || row.first_name) {
         const fullName = `${row.last_name || ''} ${row.first_name || ''}`.trim();
         const kanaName = `${row.last_kana || ''} ${row.first_kana || ''}`.trim();
         const titleAttr = kanaName ? `title="読み: ${kanaName}"` : '';
-        nameDisplayHtml = `${esc(row.name)} <span class="text-slate-700 font-medium cursor-help" ${titleAttr}>(${esc(fullName)})</span>`;
+        nameDisplayHtml = `${esc(row.name)} <span class="${isClosed ? 'text-slate-400' : 'text-slate-700'} font-medium cursor-help" ${titleAttr}>(${esc(fullName)})</span>`;
       }
 
       const initialHtml = row.skillsheet 
-        ? `<a href="${esc(row.skillsheet)}" target="_blank" class="text-emerald-600 hover:underline inline-flex items-center gap-1 font-bold">${nameDisplayHtml} <i class="fa-solid fa-up-right-from-square text-[10px]"></i></a>`
-        : `<span class="font-bold text-slate-800">${nameDisplayHtml}</span>`;
+        ? `<a href="${esc(row.skillsheet)}" target="_blank" class="${isClosed ? 'text-slate-400' : 'text-emerald-600'} hover:underline inline-flex items-center gap-1 font-bold">${nameDisplayHtml} <i class="fa-solid fa-up-right-from-square text-[10px]"></i></a>`
+        : `<span class="font-bold ${isClosed ? 'text-slate-400' : 'text-slate-800'}">${nameDisplayHtml}</span>`;
       
-      // 年齢の装飾（生年月日があれば色をつけてオンマウスで生年月日を表示）
       let ageDisplay = esc(row.age || '');
       if (row.birth_date && ageDisplay) {
-        ageDisplay = `<span class="text-emerald-600 font-semibold cursor-help underline decoration-dotted" title="生年月日: ${esc(row.birth_date)}">${ageDisplay}</span>`;
+        ageDisplay = `<span class="${isClosed ? 'text-slate-400' : 'text-emerald-600'} font-semibold cursor-help underline decoration-dotted" title="生年月日: ${esc(row.birth_date)}">${ageDisplay}</span>`;
       }
 
-      // 国籍が「日本」以外の場合のみ表示対象に含める
       const nat = row.nationality && row.nationality !== '日本' ? esc(row.nationality) : '';
-
       const profileDetails = [ageDisplay, esc(row.gender || ''), nat].filter(Boolean).join(' / ');
-      const topEngineerInfo = profileDetails ? `${initialHtml} <span class="text-xs text-slate-500">（${profileDetails}）</span>` : initialHtml;
+      const topEngineerInfo = profileDetails ? `${initialHtml} <span class="text-xs ${isClosed ? 'text-slate-400' : 'text-slate-500'}">（${profileDetails}）</span>` : initialHtml;
 
-      // 2段目：所属 / 最寄駅（住所があれば最寄駅に色をつけてオンマウスで住所を表示）
       let areaDisplay = esc(row.area || '---');
       if (row.address && row.area) {
-        areaDisplay = `<span class="text-emerald-600 font-semibold cursor-help underline decoration-dotted" title="住所: ${esc(row.address)}">${areaDisplay}</span>`;
+        areaDisplay = `<span class="${isClosed ? 'text-slate-400' : 'text-emerald-600'} font-semibold cursor-help underline decoration-dotted" title="住所: ${esc(row.address)}">${areaDisplay}</span>`;
       }
       const bottomEngineerInfo = `${esc(row.belong || '---')} / ${areaDisplay}`;
 
-      // スキルと金額列（全2段構成）
       const topConditionParts = [row.period, row.price + (row.base_hours ? ' / ' + row.base_hours : ''), row.experience_years ? `経験${row.experience_years}` : ''].filter(Boolean);
       const bottomConditionSkill = esc(row.skill || '').slice(0, 80);
 
       return `
-      <tr class="hover:bg-emerald-50/50">
+      <tr class="hover:bg-emerald-50/50 ${isClosed ? 'bg-slate-300/90 text-slate-500' : ''}">
         <td class="px-4 py-4 min-w-[280px]">
           <div>${topEngineerInfo}</div>
-          <div class="text-xs text-slate-400 mt-1">${bottomEngineerInfo}</div>
+          <div class="text-xs ${isClosed ? 'text-slate-500' : 'text-slate-400'} mt-1">${bottomEngineerInfo}</div>
         </td>
-        <td class="px-4 py-4 text-sm text-slate-600 min-w-[260px]">
+        <td class="px-4 py-4 text-sm ${isClosed ? 'text-slate-500' : 'text-slate-600'} min-w-[260px]">
           <div>${esc(topConditionParts.join(' / '))}</div>
-          <div class="text-xs text-slate-500 mt-1">${bottomConditionSkill}</div>
+          <div class="text-xs ${isClosed ? 'text-slate-500' : 'text-slate-500'} mt-1">${bottomConditionSkill}</div>
         </td>
-        <td class="px-4 py-4 text-sm text-slate-600 min-w-[180px]">
+        <td class="px-4 py-4 text-sm ${isClosed ? 'text-slate-500' : 'text-slate-600'} min-w-[180px]">
           <div>${esc(row.company_name || '未紐づけ')}</div>
           <div class="text-xs text-slate-400 mt-1">
             ${esc(row.contact_name || '')} 
-            <button type="button" class="sourceBtn text-emerald-600 hover:underline cursor-pointer ml-1 font-medium" data-received="${esc(row.received || '')}" data-company-name="${esc(row.company_name || '')}" data-contact-name="${esc(row.contact_name || '')}" data-contact-method="${esc(row.contact_method || '')}" data-original="${esc(row.original || '')}">${esc(row.contact_method || '')}</button>
+            <button type="button" class="sourceBtn ${isClosed ? 'text-slate-500' : 'text-emerald-600'} hover:underline cursor-pointer ml-1 font-medium" data-received="${esc(row.received || '')}" data-company-name="${esc(row.company_name || '')}" data-contact-name="${esc(row.contact_name || '')}" data-contact-method="${esc(row.contact_method || '')}" data-original="${esc(row.original || '')}">${esc(row.contact_method || '')}</button>
           </div>
         </td>
         <td class="px-4 py-4 whitespace-nowrap">
           <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass[row.status] || statusClass.draft}">${statusLabel[row.status] || row.status}</span>
-          <div class="text-[11px] text-slate-400 mt-2">${esc(row.received || '')}</div>
+          <div class="text-[11px] ${isClosed ? 'text-slate-500' : 'text-slate-400'} mt-2">${esc(row.received || '')}</div>
         </td>
         <td class="px-4 py-4 text-right">
           <div class="flex flex-col items-end gap-1.5">
