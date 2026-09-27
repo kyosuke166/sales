@@ -20,6 +20,7 @@ try {
     
     $stmt_proj = $pdo->query($query_projects);
     $orders = [];
+    $next_anken_id = (int)$pdo->query("SELECT COALESCE(MAX(CAST(anken_id AS UNSIGNED)), 0) + 1 FROM orders")->fetchColumn();
 
     while ($proj = $stmt_proj->fetch(PDO::FETCH_ASSOC)) {
         $anken_id = $proj['anken_id'];
@@ -27,7 +28,7 @@ try {
         // 2. 該当する anken_id を持つ「上位（in）」の注文をすべて取得（複数対応）
         $query_in = "
             SELECT 
-                o_in.id,
+                o_in.*,
                 c_upper.company_name AS upper_company,
                 o_in.estimate AS upper_estimate,
                 o_in.order_no AS upper_order_no,
@@ -40,9 +41,14 @@ try {
                 CONCAT(
                     COALESCE(FORMAT(o_in.unit_price, 0), '0'), 
                     '（', 
-                    COALESCE(FORMAT(o_in.range_min, 0), '0'), 
-                    '-', 
-                    COALESCE(FORMAT(o_in.range_max, 0), '0'), 
+                    CASE
+                        WHEN o_in.range_min IS NULL AND o_in.range_max IS NULL THEN '固定'
+                        ELSE CONCAT(
+                            COALESCE(FORMAT(o_in.range_min, 0), '0'),
+                            '-',
+                            COALESCE(FORMAT(o_in.range_max, 0), '0')
+                        )
+                    END,
                     '）'
                 ) AS upper_quote,
                 o_in.worker_name AS upper_worker,
@@ -58,14 +64,12 @@ try {
 
         $formatted_upper = [];
         foreach ($upper_rows as $u) {
-            $upper_status_text = '要確認';
-            if ($u['upper_raw_status'] === 'renewed') {
-                $upper_status_text = '更新済';
-            } elseif ($u['upper_raw_status'] === 'checking') {
-                $upper_status_text = '確認中';
-            } elseif (!empty($u['upper_raw_status']) && $u['upper_raw_status'] !== 'pending') {
-                $upper_status_text = $u['upper_raw_status'];
-            }
+            $upper_status_text = [
+                'pending' => '要確認',
+                'checking' => '確認中',
+                'renewed' => '更新済',
+                'terminated' => '終了',
+            ][$u['upper_raw_status']] ?? '要確認';
 
             $formatted_upper[] = [
                 'company' => $u['upper_company'] ?: 'N/A',
@@ -75,14 +79,20 @@ try {
                 'period' => $u['upper_period'],
                 'quote' => $u['upper_quote'],
                 'person' => $u['upper_worker'] ?: '—',
-                'status' => $upper_status_text
+                'status' => $upper_status_text,
+                'order' => array_intersect_key($u, array_flip([
+                    'id', 'anken_id', 'anken_name', 'order_direction', 'company_id', 'contact_id',
+                    'worker_name', 'estimate', 'order_no', 'start_date', 'end_date', 'renewal_status',
+                    'unit_price', 'total_amount', 'range_min', 'range_max', 'time_unit',
+                    'payment_site', 'memo', 'file_path'
+                ]))
             ];
         }
 
         // 3. 該当する anken_id を持つ「所属（out）」の注文をすべて取得（複数対応）
         $query_out = "
             SELECT 
-                o_out.id,
+                o_out.*,
                 c_lower.company_name AS lower_company,
                 o_out.estimate AS lower_estimate,
                 o_out.order_no AS lower_order_no,
@@ -95,9 +105,14 @@ try {
                 CONCAT(
                     COALESCE(FORMAT(o_out.unit_price, 0), '0'), 
                     '（', 
-                    COALESCE(FORMAT(o_out.range_min, 0), '0'), 
-                    '-', 
-                    COALESCE(FORMAT(o_out.range_max, 0), '0'), 
+                    CASE
+                        WHEN o_out.range_min IS NULL AND o_out.range_max IS NULL THEN '固定'
+                        ELSE CONCAT(
+                            COALESCE(FORMAT(o_out.range_min, 0), '0'),
+                            '-',
+                            COALESCE(FORMAT(o_out.range_max, 0), '0')
+                        )
+                    END,
                     '）'
                 ) AS lower_quote,
                 o_out.worker_name AS lower_worker,
@@ -113,9 +128,12 @@ try {
 
         $formatted_lower = [];
         foreach ($lower_rows as $l) {
-            $status_text = '要確認';
-            if ($l['lower_status'] === 'renewed') $status_text = '更新済';
-            if ($l['lower_status'] === 'checking') $status_text = '確認中';
+            $status_text = [
+                'pending' => '要確認',
+                'checking' => '確認中',
+                'renewed' => '更新済',
+                'terminated' => '終了',
+            ][$l['lower_status']] ?? '要確認';
 
             $formatted_lower[] = [
                 'company' => $l['lower_company'] ?: 'N/A',
@@ -125,7 +143,13 @@ try {
                 'period' => $l['lower_period'],
                 'quote' => $l['lower_quote'],
                 'person' => $l['lower_worker'] ?: '—',
-                'status' => $status_text
+                'status' => $status_text,
+                'order' => array_intersect_key($l, array_flip([
+                    'id', 'anken_id', 'anken_name', 'order_direction', 'company_id', 'contact_id',
+                    'worker_name', 'estimate', 'order_no', 'start_date', 'end_date', 'renewal_status',
+                    'unit_price', 'total_amount', 'range_min', 'range_max', 'time_unit',
+                    'payment_site', 'memo', 'file_path'
+                ]))
             ];
         }
 
@@ -138,10 +162,10 @@ try {
         ];
     }
     
-    echo json_encode(['status' => 'success', 'data' => $orders]);
+    echo json_encode(['status' => 'success', 'data' => $orders, 'next_anken_id' => $next_anken_id], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
 
 } catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
+    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
 }
 ?>
