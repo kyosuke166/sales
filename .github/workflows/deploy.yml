@@ -1,9 +1,10 @@
 name: Deploy to Sakuracloud
 
 on:
-  push:
-    branches:
-      - main  # mainブランチにPushされた時に実行
+#  push:
+#    branches:
+#      - main  # mainブランチにPushされた時に実行
+  workflow_dispatch:  # GitHubのActionsタブから手動で実行
 
 jobs:
   build_and_deploy:
