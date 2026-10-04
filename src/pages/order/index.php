@@ -14,7 +14,6 @@ require_once '../header.php';
         <div class="flex flex-wrap items-center gap-2">
           <button class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:border-blue-300 hover:text-blue-600">見積書作成</button>
           <button id="create-order-button" type="button" class="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700">注文書作成</button>
-          <button class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:border-blue-300 hover:text-blue-600">請求書作成</button>
         </div>
       </div>
     </section>
@@ -145,6 +144,29 @@ require_once '../header.php';
 
     function displayAnkenNumber(value) {
       return String(value ?? '').replace(/^0+(?=\d)/, '');
+    }
+
+    function orderQuoteMarkup(item) {
+      const match = /^(.*?)（(.*)）$/.exec(item.quote ?? '');
+      if (!match) return `\\${escapeHtml(item.quote)}`;
+
+      const paymentSite = item.order.payment_site;
+      const timeUnit = item.order.time_unit;
+      const unitPrice = `\\${escapeHtml(match[1])}`;
+      const range = `（${escapeHtml(match[2])}）`;
+      const unitPriceMarkup = paymentSite
+        ? `<span title="支払サイト: ${escapeHtml(paymentSite)}">${unitPrice}</span>`
+        : unitPrice;
+      const rangeMarkup = timeUnit !== null && timeUnit !== undefined && timeUnit !== ''
+        ? `<span title="時間単位: ${escapeHtml(timeUnit)}">${range}</span>`
+        : range;
+      return `${unitPriceMarkup}${rangeMarkup}`;
+    }
+
+    function orderPeriodMarkup(item) {
+      const period = escapeHtml(item.period);
+      const memo = item.order.memo?.trim();
+      return memo ? `<span title="メモ: ${escapeHtml(memo)}">${period}</span>` : period;
     }
 
     async function parseApiResponse(response, endpoint) {
@@ -463,7 +485,7 @@ require_once '../header.php';
               const isSameCompany = (index > 0 && upper.company === lastUpperCompany);
               const isSameOrderNo = (index > 0 && upper.orderNo !== '—' && upper.orderNo === lastUpperOrderNo);
 
-              const displayCompany = isSameCompany ? '' : `<span class="mini-label ${isPast ? 'muted' : ''}">案件</span>${escapeHtml(upper.company)}`;
+              const displayCompany = isSameCompany ? '' : `<span class="mini-label ${isPast ? 'muted' : ''}">案件</span><span title="会社ID: ${escapeHtml(upper.order.company_id)}">${escapeHtml(upper.company)}</span>`;
               
               const displayOrderNo = isSameOrderNo ? '' : orderNumberMarkup(upper);
 
@@ -474,8 +496,8 @@ require_once '../header.php';
                 <tr class="case-row ${isPast ? 'bg-slate-100/60' : 'row-upper'}">
                   <td><div class="stack-cell"><div class="stack-row">${displayCompany}</div></div></td>
                   <td><div class="stack-cell"><div class="stack-row">${displayOrderNo}</div></div></td>
-                  <td><div class="stack-cell"><div class="stack-row">${escapeHtml(upper.period)}</div></div></td>
-                  <td><div class="stack-cell"><div class="stack-row">\\${escapeHtml(upper.quote)}</div></div></td>
+                  <td><div class="stack-cell"><div class="stack-row">${orderPeriodMarkup(upper)}</div></div></td>
+                  <td><div class="stack-cell"><div class="stack-row">${orderQuoteMarkup(upper)}</div></div></td>
                   <td><div class="stack-cell"><div class="stack-row">${escapeHtml(upper.person)}</div></div></td>
                   <td><div class="stack-cell"><div class="stack-row">${escapeHtml(upper.estimate)}</div></div></td>
                   <td><div class="stack-cell"><div class="stack-row">${escapeHtml(upper.status)}</div></div></td>
@@ -493,7 +515,7 @@ require_once '../header.php';
               const isSameCompany = (index > 0 && lower.company === lastLowerCompany);
               const isSameOrderNo = (index > 0 && lower.orderNo !== '—' && lower.orderNo === lastLowerOrderNo);
 
-              const displayCompany = isSameCompany ? '' : `<span class="mini-label muted">要員</span>${escapeHtml(lower.company)}`;
+              const displayCompany = isSameCompany ? '' : `<span class="mini-label muted">要員</span><span title="会社ID: ${escapeHtml(lower.order.company_id)}">${escapeHtml(lower.company)}</span>`;
               
               const displayOrderNo = isSameOrderNo ? '' : orderNumberMarkup(lower);
 
@@ -504,8 +526,8 @@ require_once '../header.php';
                 <tr class="case-row ${isPast ? 'bg-slate-100/40' : 'row-lower'}">
                   <td><div class="stack-cell"><div class="stack-row">${displayCompany}</div></div></td>
                   <td><div class="stack-cell"><div class="stack-row">${displayOrderNo}</div></div></td>
-                  <td><div class="stack-cell"><div class="stack-row">${escapeHtml(lower.period)}</div></div></td>
-                  <td><div class="stack-cell"><div class="stack-row">\\${escapeHtml(lower.quote)}</div></div></td>
+                  <td><div class="stack-cell"><div class="stack-row">${orderPeriodMarkup(lower)}</div></div></td>
+                  <td><div class="stack-cell"><div class="stack-row">${orderQuoteMarkup(lower)}</div></div></td>
                   <td><div class="stack-cell"><div class="stack-row">${escapeHtml(lower.person)}</div></div></td>
                   <td><div class="stack-cell"><div class="stack-row">${escapeHtml(lower.estimate)}</div></div></td>
                   <td><div class="stack-cell"><div class="stack-row">${escapeHtml(lower.status)}</div></div></td>

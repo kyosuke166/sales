@@ -402,7 +402,7 @@ import Layout from '../../layouts/Layout.astro';
   let companySearchTimeout = null;
   document.getElementById('f_company_name').addEventListener('input', (e) => {
     const value = e.target.value.trim();
-    setCompanySelection('', '');
+    document.getElementById('f_company_id').value = '';
     const contactEl = document.getElementById('f_contact_id');
     contactEl.innerHTML = '<option value="">会社を選択してください</option>';
     contactEl.disabled = true;
